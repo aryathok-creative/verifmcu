@@ -101,6 +101,10 @@
       </div>
       <div class="flex items-center gap-3 text-xs text-slate-500">
         <span id="whoLabel">-</span>
+        <!-- Label versi. TIDAK memakai kelas "hidden sm:inline": di file ini .hidden ditulis sebagai
+     display:none !important (lihat blok <style> di atas), sehingga sm:inline tidak akan pernah
+     bisa menimpanya dan labelnya jadi tidak pernah muncul sama sekali. -->
+        <span id="versiLabel" class="text-[10px] leading-tight text-slate-400 border-l border-slate-200 pl-3"></span>
         <button onclick="handleLogout()" class="bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-medium rounded-lg px-3 py-1.5 transition">Keluar</button>
       </div>
     </div>
@@ -158,7 +162,14 @@
           </div>
         </div>
         <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 mb-4">
-          <h2 class="text-sm font-semibold text-slate-800 mb-3">Daftar Klien</h2>
+          <h2 class="text-sm font-semibold text-slate-800 mb-1">Daftar Klien</h2>
+          <div id="kl_info" class="text-xs text-slate-500 mb-3">Memuat...</div>
+          <div class="relative mb-3 max-w-md">
+            <input id="kl_cari" type="search" autocomplete="off" placeholder="Cari kode / nama klien / PIC / lokasi MCU..."
+              class="w-full border border-slate-300 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
+            <svg class="absolute left-3 top-2.5 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.3-4.3" stroke-linecap="round"></path></svg>
+          </div>
           <div class="border border-slate-200 rounded-xl overflow-auto max-h-[360px] mb-3">
             <table class="w-full text-xs">
               <thead><tr class="bg-slate-50">
@@ -216,6 +227,12 @@
         <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 mb-4">
           <h2 class="text-sm font-semibold text-slate-800 mb-1">Daftar Paket &amp; Item</h2>
           <div id="paket_summary" class="text-xs text-slate-500 mb-3">Memuat ringkasan...</div>
+          <div class="relative mb-3 max-w-md">
+            <input id="pk_cari" type="search" autocomplete="off" placeholder="Cari kode paket / nama paket / parameter / kategori / unit..."
+              class="w-full border border-slate-300 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
+            <svg class="absolute left-3 top-2.5 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.3-4.3" stroke-linecap="round"></path></svg>
+          </div>
           <div class="border border-slate-200 rounded-xl overflow-auto max-h-[360px] mb-3">
             <table class="w-full text-xs">
               <thead><tr class="bg-slate-50">
@@ -278,8 +295,17 @@
         <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 mb-4">
           <h2 class="text-sm font-semibold text-slate-800 mb-1">Daftar Peserta</h2>
           <div id="peserta_summary" class="text-xs text-slate-500 mb-3">Memuat ringkasan...</div>
-          <div class="max-w-xs mb-3"><label class="text-xs font-medium text-slate-600">Filter klien</label>
-            <select id="ps_filter_klien" onchange="muatPeserta()" class="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"><option value="">Semua klien</option></select></div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3 max-w-2xl">
+            <div><label class="text-xs font-medium text-slate-600">Filter klien</label>
+              <select id="ps_filter_klien" onchange="muatPeserta()" class="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"><option value="">Semua klien</option></select></div>
+            <div><label class="text-xs font-medium text-slate-600">Cari peserta</label>
+              <div class="relative mt-1">
+                <input id="ps_cari" type="search" autocomplete="off" placeholder="Nama / kode paket / no identitas..."
+                  class="w-full border border-slate-300 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
+                <svg class="absolute left-3 top-2.5 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.3-4.3" stroke-linecap="round"></path></svg>
+              </div></div>
+          </div>
           <div class="border border-slate-200 rounded-xl overflow-auto max-h-[360px] mb-3">
             <table class="w-full text-xs">
               <thead><tr class="bg-slate-50">
@@ -445,6 +471,12 @@
  * KONFIGURASI — GANTI setelah Web App di-deploy (lihat panduan deploy)
  * ===================================================================== */
 const API_URL = "https://script.google.com/macros/s/AKfycbyNtsz-F-Bjdgvx-1cmOcRe_Lm9EpkTmweP6maXytOSfCUdBemYlL7cHk30154ufk_g/exec"; // <-- Doel isi ini
+// Penanda versi berkas frontend ini. WAJIB diperbarui setiap kali index.html diubah.
+// Ditampilkan berdampingan dgn versi backend di header portal — supaya kelihatan langsung kalau
+// salah satunya belum diperbarui (mis. frontend sudah diupload ulang tapi backend belum di-deploy
+// ulang, atau sebaliknya). Lihat komentar VERSI_BACKEND di file .gs untuk latar belakangnya.
+const VERSI_FRONTEND = "2026-08-20 15:45";
+let versiBackendAktif = "?";
 
 let authToken = null;
 let currentUser = null;
@@ -521,6 +553,9 @@ async function handleLogin() {
     const j = await _post({ action: "checkLogin", email, password });
     if (!j.ok) { errEl.textContent = j.error || "Login gagal."; errEl.classList.remove("hidden"); return; }
     authToken = j.token; currentUser = j.user;
+    // Backend versi lama tidak mengirim field ini — ditandai eksplisit supaya jelas bahwa yang
+    // aktif adalah versi sebelum penanda ini dibuat, bukan sekadar gagal terbaca.
+    versiBackendAktif = j.versiBackend || "lama (sebelum 2026-08-20 15:45)";
     if (j.user.mustChange) { showMustChange(); return; }
     enterApp();
   } catch (e) {
@@ -560,6 +595,11 @@ async function enterApp() {
   document.getElementById("mustChangeScreen").classList.add("hidden");
   document.getElementById("appShell").classList.remove("hidden");
   document.getElementById("whoLabel").textContent = currentUser.nama + " · " + currentUser.role;
+  // Baris versi: kalau angka backend tidak cocok dgn file .gs terbaru, berarti belum deploy ulang.
+  const cocok = versiBackendAktif === VERSI_FRONTEND;
+  const elVersi = document.getElementById("versiLabel");
+  elVersi.innerHTML = `Backend <b>${escapeHtml(versiBackendAktif)}</b> &middot; Frontend <b>${escapeHtml(VERSI_FRONTEND)}</b>`
+    + (cocok ? "" : ` <span class="text-amber-600" title="Backend dan frontend berasal dari revisi yang berbeda — kemungkinan salah satunya belum diperbarui.">&#9888; beda versi</span>`);
 
   const role = (currentUser.role || "").toLowerCase();
   const bisaMarketing = role.indexOf("marketing") > -1 || role.indexOf("admin") > -1;
@@ -678,17 +718,83 @@ function _isiDropdownKlien_(ids, data) {
     sel.value = keep;
   });
 }
+/* ---------------- Helper tabel dgn pencarian (dipakai bersama 3 daftar Marketing) ----------------
+   Daftar Klien, Daftar Paket & Item, dan Daftar Peserta punya masalah yang sama: makin lama makin
+   panjang, dan versi lama menggambar SEMUA baris sekaligus pakai `tbody.innerHTML += ...` di dalam
+   loop — pola yang memaksa browser membongkar-pasang ulang seluruh tabel tiap baris (makin lambat
+   secara kuadratik). Karena polanya identik, dibuatkan satu helper bersama, bukan 3 salinan kode.
+
+   Pencarian diproses di browser atas data yang sudah dimuat (bukan panggil server tiap ketikan) &
+   ditunda 200ms, alasan yang sama dgn tabel kehadiran: tiap panggilan Apps Script makan beberapa
+   detik. Jumlah baris yang digambar dibatasi BATAS_BARIS_TABEL supaya daftar yang sangat panjang
+   tidak membuat halaman berat; sisanya disaring lewat kotak cari — dan jumlah yang tidak digambar
+   SELALU diberitahukan, tidak dipotong diam-diam.                                                */
+
+const BATAS_BARIS_TABEL = 300;
+const _tabelCari = {}; // kunci -> konfigurasi + data
+
+function daftarkanTabelCari(kunci, cfg) {
+  _tabelCari[kunci] = Object.assign({ data: [] }, cfg);
+  const input = document.getElementById(cfg.inputId);
+  if (!input) return;
+  let timer = null;
+  input.addEventListener("input", () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => renderTabelCari(kunci), 200);
+  });
+}
+
+function isiTabelCari(kunci, data) {
+  if (!_tabelCari[kunci]) return;
+  _tabelCari[kunci].data = data || [];
+  renderTabelCari(kunci);
+}
+
+function renderTabelCari(kunci) {
+  const t = _tabelCari[kunci];
+  if (!t) return;
+  const q = (document.getElementById(t.inputId).value || "").trim().toLowerCase();
+  const cocok = q
+    ? t.data.filter(r => t.kolomCari.map(k => String(r[k] == null ? "" : r[k])).join(" ").toLowerCase().indexOf(q) > -1)
+    : t.data;
+  const tampil = cocok.slice(0, BATAS_BARIS_TABEL);
+  const tbody = document.getElementById(t.tbodyId);
+
+  if (!t.data.length) {
+    tbody.innerHTML = `<tr><td class="px-3 py-3 text-slate-500" colspan="${t.colspan}">${t.pesanKosong}</td></tr>`;
+  } else if (!cocok.length) {
+    tbody.innerHTML = `<tr><td class="px-3 py-3 text-slate-500" colspan="${t.colspan}">Tidak ada yang cocok dengan pencarian "${escapeHtml(q)}".</td></tr>`;
+  } else {
+    tbody.innerHTML = tampil.map(t.render).join(""); // dirakit sekali, bukan += dalam loop
+  }
+  if (t.onRender) t.onRender(cocok, t.data, tampil.length);
+}
+
+// Kalimat "menampilkan X dari Y" yang dipakai ketiga daftar — supaya pemotongan 300 baris tidak
+// pernah terlihat seolah "itu saja datanya".
+function _infoJumlahTabel(cocok, semua, digambar, satuan) {
+  let s = `Menampilkan <b>${digambar}</b> dari <b>${semua.length}</b> ${satuan}`;
+  if (cocok.length !== semua.length) s += ` (cocok pencarian: <b>${cocok.length}</b>)`;
+  if (digambar < cocok.length) s += ` &middot; <span class="text-amber-700">${cocok.length - digambar} ${satuan} lain tidak ditampilkan — persempit pencarian untuk melihatnya.</span>`;
+  return s;
+}
+
+daftarkanTabelCari("klien", {
+  inputId: "kl_cari", tbodyId: "tbl_klien", colspan: 5,
+  kolomCari: ["kodeKlien", "namaKlien", "skemaTagihan", "picMarketing", "lokasiMcu"],
+  pesanKosong: "Belum ada data klien.",
+  render: r => `<tr class="border-b border-slate-100">
+      <td class="px-3 py-2">${escapeHtml(r.kodeKlien)}</td><td class="px-3 py-2">${escapeHtml(r.namaKlien)}</td>
+      <td class="px-3 py-2">${escapeHtml(r.skemaTagihan)}</td><td class="px-3 py-2">${escapeHtml(r.picMarketing)||"-"}</td>
+      <td class="px-3 py-2">${escapeHtml(r.lokasiMcu)||"-"}</td></tr>`,
+  onRender: (cocok, semua, digambar) => {
+    document.getElementById("kl_info").innerHTML = _infoJumlahTabel(cocok, semua, digambar, "klien");
+  }
+});
 async function muatKlien() {
   const j = await apiCall("getMasterKlien");
   if (!j.ok) { toast(j.error, true); return; }
-  const tbody = document.getElementById("tbl_klien");
-  tbody.innerHTML = j.data.length ? "" : '<tr><td class="px-3 py-2" colspan="5">Belum ada data klien.</td></tr>';
-  j.data.forEach(r => {
-    tbody.innerHTML += `<tr class="border-b border-slate-100">
-      <td class="px-3 py-2">${escapeHtml(r.kodeKlien)}</td><td class="px-3 py-2">${escapeHtml(r.namaKlien)}</td>
-      <td class="px-3 py-2">${escapeHtml(r.skemaTagihan)}</td><td class="px-3 py-2">${escapeHtml(r.picMarketing)||"-"}</td>
-      <td class="px-3 py-2">${escapeHtml(r.lokasiMcu)||"-"}</td></tr>`;
-  });
+  isiTabelCari("klien", j.data);
   // isi dropdown klien di tab peserta (Marketing) + tab CS (kalau user ini jg dapat akses CS, mis. Admin)
   _isiDropdownKlien_(["ps_klien", "ps_klien_import", "ps_filter_klien", "cs_klien", "rk_klien"], j.data);
 }
@@ -724,21 +830,28 @@ async function muatPaket() {
   const j = await apiCall("getMasterPaket");
   if (!j.ok) { toast(j.error, true); return; }
   (j.kategoriList || []).forEach(k => { if (!_kategoriList.includes(k)) _kategoriList.push(k); });
-  const tbody = document.getElementById("tbl_paket");
-  tbody.innerHTML = j.items.length ? "" : '<tr><td class="px-3 py-2" colspan="7">Belum ada data paket.</td></tr>';
-  j.items.forEach(r => {
-    tbody.innerHTML += `<tr class="border-b border-slate-100" data-kode="${escapeAttr(r.kodePaket)}" data-param="${escapeAttr(r.parameter)}">
+  isiTabelCari("paket", j.items);
+}
+daftarkanTabelCari("paket", {
+  inputId: "pk_cari", tbodyId: "tbl_paket", colspan: 7,
+  kolomCari: ["kodePaket", "namaPaket", "kategori", "parameter", "unitPJ"],
+  pesanKosong: "Belum ada data paket.",
+  render: r => `<tr class="border-b border-slate-100" data-kode="${escapeAttr(r.kodePaket)}" data-param="${escapeAttr(r.parameter)}">
       <td class="px-3 py-2">${escapeHtml(r.kodePaket)}</td><td class="px-3 py-2">${escapeHtml(r.namaPaket)}</td>
       <td class="px-3 py-2">${escapeHtml(r.kategori)||"-"}</td><td class="px-3 py-2">${escapeHtml(r.parameter)}</td>
       <td class="px-3 py-2">${escapeHtml(r.unitPJ)||"-"}</td><td class="px-3 py-2">${Number(r.hargaRetail||0).toLocaleString("id-ID")}</td>
-      <td class="px-3 py-2"><button class="btn-del-item text-red-500 hover:text-red-700" title="Hapus item ini">🗑</button></td></tr>`;
-  });
-  // Ringkasan — utk cross-check manual vs sistem (poin diminta Doel)
-  const distinctPaket = new Set(j.items.map(i => i.kodePaket)).size;
-  const totalHarga = j.items.reduce((s, i) => s + Number(i.hargaRetail || 0), 0);
-  document.getElementById("paket_summary").textContent =
-    `${distinctPaket} paket · ${j.items.length} item · Total harga semua item: Rp ${totalHarga.toLocaleString("id-ID")}`;
-}
+      <td class="px-3 py-2"><button class="btn-del-item text-red-500 hover:text-red-700" title="Hapus item ini">🗑</button></td></tr>`,
+  onRender: (cocok, semua, digambar) => {
+    // Ringkasan dihitung dari baris yang COCOK pencarian (bukan cuma yang tergambar), supaya angka
+    // total tetap benar walau daftar dipotong di BATAS_BARIS_TABEL.
+    const distinctPaket = new Set(cocok.map(i => i.kodePaket)).size;
+    const totalHarga = cocok.reduce((s, i) => s + Number(i.hargaRetail || 0), 0);
+    document.getElementById("paket_summary").innerHTML =
+      `<b>${distinctPaket}</b> paket &middot; <b>${cocok.length}</b> item &middot; Total harga: <b>Rp ${totalHarga.toLocaleString("id-ID")}</b>`
+      + (cocok.length !== semua.length ? ` <span class="text-slate-400">(dari ${semua.length} item)</span>` : "")
+      + (digambar < cocok.length ? ` &middot; <span class="text-amber-700">${cocok.length - digambar} item tidak ditampilkan — persempit pencarian.</span>` : "");
+  }
+});
 document.addEventListener("click", async (e) => {
   if (!e.target.classList.contains("btn-del-item")) return;
   const tr = e.target.closest("tr");
@@ -883,17 +996,25 @@ async function muatPeserta() {
   const filter = document.getElementById("ps_filter_klien").value;
   const j = await apiCall("getDataPeserta", { kodeKlien: filter });
   if (!j.ok) { toast(j.error, true); return; }
-  const tbody = document.getElementById("tbl_peserta");
-  tbody.innerHTML = j.data.length ? "" : '<tr><td class="px-3 py-2" colspan="6">Belum ada peserta.</td></tr>';
-  j.data.forEach(r => {
-    tbody.innerHTML += `<tr class="border-b border-slate-100">
+  _pesertaFilterKlien = filter;
+  isiTabelCari("peserta", j.data);
+}
+let _pesertaFilterKlien = "";
+daftarkanTabelCari("peserta", {
+  inputId: "ps_cari", tbodyId: "tbl_peserta", colspan: 6,
+  kolomCari: ["namaPeserta", "kodePaket", "kodeKlien", "noIdentitas", "idPeserta"],
+  pesanKosong: "Belum ada peserta.",
+  render: r => `<tr class="border-b border-slate-100">
       <td class="px-3 py-2">${escapeHtml(r.no)}</td><td class="px-3 py-2">${escapeHtml(r.kodeKlien)}</td>
       <td class="px-3 py-2">${escapeHtml(r.namaPeserta)}</td><td class="px-3 py-2">${escapeHtml(r.kodePaket)}</td>
       <td class="px-3 py-2">${escapeHtml(r.tanggalRencana)}</td>
-      <td class="px-3 py-2">${r.jenisIdentitas?escapeHtml(r.jenisIdentitas)+": "+escapeHtml(r.noIdentitas):"-"}</td></tr>`;
-  });
-  document.getElementById("peserta_summary").textContent = `${j.data.length} peserta ditampilkan${filter ? " (klien " + filter + ")" : " (semua klien)"}.`;
-}
+      <td class="px-3 py-2">${r.jenisIdentitas?escapeHtml(r.jenisIdentitas)+": "+escapeHtml(r.noIdentitas):"-"}</td></tr>`,
+  onRender: (cocok, semua, digambar) => {
+    document.getElementById("peserta_summary").innerHTML =
+      _infoJumlahTabel(cocok, semua, digambar, "peserta")
+      + (_pesertaFilterKlien ? ` &middot; klien <b>${escapeHtml(_pesertaFilterKlien)}</b>` : " &middot; semua klien");
+  }
+});
 async function simpanPesertaManual() {
   const body = {
     kodeKlien: document.getElementById("ps_klien").value,
