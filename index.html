@@ -745,61 +745,79 @@ function parsePesertaFile(file) {
   const klien = document.getElementById("ps_klien_import").value;
   if (!klien) { toast("Pilih klien tujuan dulu sebelum pilih file.", true); return; }
   const reader = new FileReader();
+  reader.onerror = () => toast("Gagal membaca file (file rusak atau bukan format Excel/CSV yang didukung).", true);
   reader.onload = (e) => {
-    const wb = XLSX.read(e.target.result, { type: "binary", cellDates: true });
-    const ws = wb.Sheets[wb.SheetNames[0]];
-    // File sumber (export SIMRS ATAU Template Impor Peserta) sama-sama bisa punya baris judul/
-    // instruksi di atas baris header sesungguhnya — jadi header TIDAK selalu di baris 1. Cari
-    // baris headernya dulu dgn cocokkan ke salah satu dari 2 format yang didukung.
-    const aoa = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "", blankrows: false });
-    const norm = (v) => String(v == null ? "" : v).trim().replace(/\*$/, "").trim();
-    let headerIdx = -1, fmt = null;
-    for (let i = 0; i < aoa.length; i++) {
-      const cells = aoa[i].map(c => norm(c).toLowerCase());
-      if (cells.indexOf(PESERTA_FORMAT_SIMRS.headerKey) !== -1) { headerIdx = i; fmt = PESERTA_FORMAT_SIMRS; break; }
-      if (cells.indexOf(PESERTA_FORMAT_TEMPLATE.headerKey) !== -1) { headerIdx = i; fmt = PESERTA_FORMAT_TEMPLATE; break; }
-    }
-    if (headerIdx === -1) {
-      toast('Format file tidak dikenali: kolom "PatientName" (export SIMRS) atau "Nama_Peserta" (Template Impor Peserta) tidak ditemukan di file ini. Pastikan pakai salah satu dari 2 format yang didukung (baris judul/instruksi di atas boleh dibiarkan).', true);
-      return;
-    }
-    const headers = aoa[headerIdx].map(norm);
-    const toISO = (v, style) => {
-      if (v === "" || v === null || v === undefined) return "";
-      if (v instanceof Date) return v.toISOString().slice(0,10);
-      if (style === "yyyymmdd") {
-        const s = String(v).trim();
-        if (/^\d{8}$/.test(s)) return s.slice(0,4) + "-" + s.slice(4,6) + "-" + s.slice(6,8);
-        return s;
+    // Semua parsing dibungkus try/catch — supaya kalau ada error tak terduga (format aneh, sheet
+    // kosong, dll), staf selalu lihat pesan jelas, TIDAK PERNAH gagal diam-diam tanpa keterangan.
+    try {
+      const wb = XLSX.read(e.target.result, { type: "binary", cellDates: true });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      if (!ws) { toast("File tidak punya sheet yang bisa dibaca.", true); return; }
+      // File sumber (export SIMRS ATAU Template Impor Peserta) sama-sama bisa punya baris judul/
+      // instruksi di atas baris header sesungguhnya — jadi header TIDAK selalu di baris 1. Cari
+      // baris headernya dulu dgn cocokkan ke salah satu dari 2 format yang didukung.
+      const aoa = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "", blankrows: false });
+      const norm = (v) => String(v == null ? "" : v).trim().replace(/\*$/, "").trim();
+      let headerIdx = -1, fmt = null;
+      for (let i = 0; i < aoa.length; i++) {
+        const cells = aoa[i].map(c => norm(c).toLowerCase());
+        if (cells.indexOf(PESERTA_FORMAT_SIMRS.headerKey) !== -1) { headerIdx = i; fmt = PESERTA_FORMAT_SIMRS; break; }
+        if (cells.indexOf(PESERTA_FORMAT_TEMPLATE.headerKey) !== -1) { headerIdx = i; fmt = PESERTA_FORMAT_TEMPLATE; break; }
       }
-      return String(v);
-    };
-    const rows = aoa.slice(headerIdx + 1).map(arr => {
-      const r = {};
-      headers.forEach((h, idx) => { if (h) r[h] = arr[idx] !== undefined ? arr[idx] : ""; });
-      const m = fmt.map;
-      return {
-        kodeKlien: klien,
-        namaPeserta: r[m.namaPeserta] || "",
-        jenisIdentitas: fmt === PESERTA_FORMAT_SIMRS ? normJenisIdentitas(r[m.jenisIdentitas]) : (r[m.jenisIdentitas] || ""),
-        noIdentitas: String(r[m.noIdentitas] || ""),
-        tanggalLahir: toISO(r[m.tanggalLahir], fmt.dateStyle),
-        tanggalRencana: toISO(r[m.tanggalRencana], fmt.dateStyle),
-        kodePaket: r[m.kodePaket] || "",
-        catatan: r[m.catatan] || ""
+      if (headerIdx === -1) {
+        toast('Format file tidak dikenali: kolom "PatientName" (export SIMRS) atau "Nama_Peserta" (Template Impor Peserta) tidak ditemukan di sheet "' + wb.SheetNames[0] + '" (sheet PERTAMA di file ini — kalau data ada di sheet lain, pindahkan dulu jadi sheet pertama). Pastikan pakai salah satu dari 2 format yang didukung.', true);
+        return;
+      }
+      const headers = aoa[headerIdx].map(norm);
+      const toISO = (v, style) => {
+        if (v === "" || v === null || v === undefined) return "";
+        if (v instanceof Date) return v.toISOString().slice(0,10);
+        if (style === "yyyymmdd") {
+          const s = String(v).trim();
+          if (/^\d{8}$/.test(s)) return s.slice(0,4) + "-" + s.slice(4,6) + "-" + s.slice(6,8);
+          return s;
+        }
+        return String(v);
       };
-    }).filter(r => r.namaPeserta);
-    if (!rows.length) {
-      toast("Kolom header ketemu, tapi tidak ada baris data berisi nama peserta di bawahnya. Pastikan baris CONTOH (kalau ada) sudah dihapus dan data diisi mulai tepat di bawah baris header.", true);
-      return;
+      const rows = aoa.slice(headerIdx + 1).map(arr => {
+        const r = {};
+        headers.forEach((h, idx) => { if (h) r[h] = arr[idx] !== undefined ? arr[idx] : ""; });
+        const m = fmt.map;
+        return {
+          kodeKlien: klien,
+          namaPeserta: r[m.namaPeserta] || "",
+          jenisIdentitas: fmt === PESERTA_FORMAT_SIMRS ? normJenisIdentitas(r[m.jenisIdentitas]) : (r[m.jenisIdentitas] || ""),
+          noIdentitas: String(r[m.noIdentitas] || ""),
+          tanggalLahir: toISO(r[m.tanggalLahir], fmt.dateStyle),
+          tanggalRencana: toISO(r[m.tanggalRencana], fmt.dateStyle),
+          kodePaket: r[m.kodePaket] || "",
+          catatan: r[m.catatan] || ""
+        };
+      }).filter(r => r.namaPeserta);
+      if (!rows.length) {
+        toast("Kolom header ketemu (format " + (fmt === PESERTA_FORMAT_SIMRS ? "export SIMRS" : "Template Impor Peserta") + "), tapi tidak ada baris data berisi nama peserta di bawahnya. Pastikan baris CONTOH (kalau ada) sudah dihapus dan data diisi mulai tepat di bawah baris header.", true);
+        return;
+      }
+      renderPesertaPreview(rows);
+    } catch (err) {
+      toast("Gagal memproses file: " + (err && err.message ? err.message : String(err)), true);
     }
-    renderPesertaPreview(rows);
   };
   reader.readAsBinaryString(file);
 }
 let _pesertaPreviewRows = [];
 async function renderPesertaPreview(rows) {
-  const j = await apiCall("validateImportPeserta", { rows });
+  let j;
+  try {
+    j = await apiCall("validateImportPeserta", { rows });
+  } catch (err) {
+    toast("Gagal menghubungi server saat validasi impor: " + (err && err.message ? err.message : String(err)), true);
+    return;
+  }
+  if (!j || j.ok === false || !Array.isArray(j.rows)) {
+    toast("Server menolak permintaan validasi impor" + (j && j.error ? (": " + j.error) : " (respons tidak sesuai)") + ".", true);
+    return;
+  }
   _pesertaPreviewRows = j.rows;
   const area = document.getElementById("ps_preview_area");
   area.innerHTML = `
