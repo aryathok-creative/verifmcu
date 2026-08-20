@@ -85,6 +85,8 @@
 
   .dropzone{border:2px dashed var(--border); border-radius:10px; padding:24px 20px; text-align:center; background:#FAFDFD; display:flex; flex-direction:column; align-items:center; gap:8px; cursor:pointer;}
   .dropzone:hover{border-color:var(--teal); background:#F2FBFB;}
+  .dropzone.locked{cursor:not-allowed; background:var(--muted-bg); opacity:.6;}
+  .dropzone.locked:hover{border-color:var(--border); background:var(--muted-bg);}
   .dz-icon{font-size:28px;}
   .dz-text b{display:block; font-size:13.5px; margin-bottom:2px;} .dz-text span{font-size:12px; color:var(--ink-soft);}
 
@@ -185,11 +187,12 @@
         <div class="card">
           <h2>Impor Item Paket dari File (mis. gaya MC0115.xlsx)</h2>
           <p class="desc">Kolom yang dibaca dari file: <b>ItemCode</b> (opsional)/<b>Nama Parameter</b>/<b>Harga</b>. Kategori &amp; Unit Penanggung Jawab diisi manual sebelum simpan.</p>
-          <div class="field"><label>Kode Paket (sesuai file, mis. MC0115) <span class="req">*</span></label><input id="pk_kode_import"></div>
-          <div class="field"><label>Nama Paket <span class="req">*</span></label><input id="pk_nama_import" placeholder="mis. MCU PT. Contoh Sejahtera"></div>
-          <div class="dropzone" onclick="document.getElementById('pk_file').click()">
+          <p class="desc"><b>Langkah 1</b> — isi Kode &amp; Nama Paket dulu (sesuai isi file, mis. dari file MC0115.xlsx berarti Kode Paket = <code>MC0115</code>). <b>Langkah 2</b> — baru klik area di bawah untuk pilih filenya.</p>
+          <div class="field"><label>Kode Paket (sesuai file, mis. MC0115) <span class="req">*</span></label><input id="pk_kode_import" oninput="updatePaketDropzoneState()"></div>
+          <div class="field"><label>Nama Paket <span class="req">*</span></label><input id="pk_nama_import" placeholder="mis. MCU PT. Contoh Sejahtera" oninput="updatePaketDropzoneState()"></div>
+          <div class="dropzone" id="pk_dropzone" onclick="onClickPaketDropzone()">
             <div class="dz-icon">📄</div>
-            <div class="dz-text"><b>Klik untuk pilih file Excel/CSV</b><span>Kolom Nama Parameter &amp; Harga dibaca otomatis</span></div>
+            <div class="dz-text"><b id="pk_dz_title">Klik untuk pilih file Excel/CSV</b><span id="pk_dz_sub">Kolom Nama Parameter &amp; Harga dibaca otomatis</span></div>
           </div>
           <input type="file" id="pk_file" class="hidden" accept=".xlsx,.xls,.csv" onchange="parsePaketFile(this.files[0])">
           <div id="pk_preview_area"></div>
@@ -273,7 +276,7 @@
 /* =====================================================================
  * KONFIGURASI — GANTI setelah Web App di-deploy (lihat panduan deploy)
  * ===================================================================== */
-const API_URL = "https://script.google.com/macros/s/AKfycbyNtsz-F-Bjdgvx-1cmOcRe_Lm9EpkTmweP6maXytOSfCUdBemYlL7cHk30154ufk_g/exec"; // <-- Doel isi ini
+const API_URL = "GANTI_DENGAN_URL_/exec_HASIL_DEPLOY"; // <-- Doel isi ini
 
 let authToken = null;
 let currentUser = null;
@@ -367,7 +370,7 @@ function enterApp() {
   if (role.indexOf("marketing") > -1 || role.indexOf("admin") > -1) {
     document.getElementById("view-marketing").classList.remove("hidden");
     document.getElementById("view-belum-tersedia").classList.add("hidden");
-    muatKlien(); muatPaket(); muatPeserta();
+    muatKlien(); muatPaket(); muatPeserta(); updatePaketDropzoneState();
   } else {
     document.getElementById("view-marketing").classList.add("hidden");
     document.getElementById("view-belum-tersedia").classList.remove("hidden");
@@ -443,6 +446,33 @@ async function simpanPaketManual() {
   toast("Item paket tersimpan.");
   ["pk_kode","pk_nama","pk_parameter","pk_kategori","pk_unit","pk_harga"].forEach(id => document.getElementById(id).value = "");
   muatPaket();
+}
+
+function updatePaketDropzoneState() {
+  const kode = document.getElementById("pk_kode_import").value.trim();
+  const nama = document.getElementById("pk_nama_import").value.trim();
+  const dz = document.getElementById("pk_dropzone");
+  const title = document.getElementById("pk_dz_title");
+  const sub = document.getElementById("pk_dz_sub");
+  if (kode && nama) {
+    dz.classList.remove("locked");
+    title.textContent = "Klik untuk pilih file Excel/CSV";
+    sub.textContent = "Kolom Nama Parameter & Harga dibaca otomatis";
+  } else {
+    dz.classList.add("locked");
+    title.textContent = "Isi Kode & Nama Paket dulu di atas";
+    sub.textContent = "Area pilih file aktif setelah kedua kolom di atas terisi";
+  }
+}
+function onClickPaketDropzone() {
+  const kode = document.getElementById("pk_kode_import").value.trim();
+  const nama = document.getElementById("pk_nama_import").value.trim();
+  if (!kode || !nama) {
+    toast("Isi Kode Paket & Nama Paket dulu (Langkah 1) sebelum pilih file.", true);
+    document.getElementById(kode ? "pk_nama_import" : "pk_kode_import").focus();
+    return;
+  }
+  document.getElementById("pk_file").click();
 }
 
 function parsePaketFile(file) {
