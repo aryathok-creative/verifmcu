@@ -14,6 +14,7 @@
   .dz-locked:hover{border-color:#cbd5e1 !important; background:#f1f5f9 !important;}
   .hidden{display:none !important;}
   .subview{display:none;} .subview.active{display:block;}
+  .subview-cs{display:none;} .subview-cs.active{display:block;}
 </style>
 </head>
 <body class="bg-slate-50 text-slate-800" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
@@ -286,13 +287,77 @@
       </div>
     </div>
 
-    <!-- View untuk role selain Marketing: modul belum dibangun di tahap ini -->
+    <!-- View CS (Modul 2 — Kehadiran + Rekap Kehadiran PDF) -->
+    <div id="view-cs" class="hidden">
+      <div class="flex gap-1 border-b border-slate-200 mb-5">
+        <button class="tab-btn-cs px-4 py-2.5 text-sm font-semibold text-teal-700 border-b-2 border-teal-600 -mb-px" onclick="switchTabCs('cs-kehadiran', this)">Tandai Kehadiran</button>
+        <button class="tab-btn-cs px-4 py-2.5 text-sm font-semibold text-slate-500 border-b-2 border-transparent -mb-px" onclick="switchTabCs('cs-rekap', this)">Cetak Rekap Kehadiran</button>
+      </div>
+
+      <!-- Tab: Tandai Kehadiran -->
+      <div class="subview-cs active" id="cs-kehadiran">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 mb-4">
+          <h2 class="text-sm font-semibold text-slate-800 mb-3">Tandai Kehadiran Peserta</h2>
+          <div class="mb-3">
+            <label class="block text-xs font-medium text-slate-600">Klien</label>
+            <select id="cs_klien" class="mt-1 w-full sm:w-80 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" onchange="muatPesertaKehadiran()">
+              <option value="">Pilih klien...</option>
+            </select>
+          </div>
+          <div class="text-xs text-slate-500 mb-3" id="cs_kehadiran_summary"></div>
+          <div class="overflow-x-auto border border-slate-200 rounded-xl">
+            <table class="w-full text-xs">
+              <thead><tr class="bg-slate-50">
+                <th class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-200 px-3 py-2">Nama Peserta</th>
+                <th class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-200 px-3 py-2">Kode Paket</th>
+                <th class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-200 px-3 py-2">Tgl Rencana</th>
+                <th class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-200 px-3 py-2">Status Kehadiran</th>
+                <th class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-200 px-3 py-2">Tgl Hadir Aktual</th>
+                <th class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-200 px-3 py-2">Aksi</th>
+              </tr></thead>
+              <tbody id="tbl_kehadiran"><tr><td class="px-3 py-2" colspan="6">Pilih klien dulu.</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: Cetak Rekap Kehadiran -->
+      <div class="subview-cs" id="cs-rekap">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 mb-4">
+          <h2 class="text-sm font-semibold text-slate-800 mb-1">Cetak Rekap Kehadiran</h2>
+          <p class="text-xs text-slate-500 mb-3">Rekap daftar peserta yang sudah ditandai "Hadir" pada rentang tanggal terpilih — untuk dicetak jadi PDF, bisa dipakai cross-check manual vs sistem.</p>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+            <div>
+              <label class="block text-xs font-medium text-slate-600">Klien</label>
+              <select id="rk_klien" class="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
+                <option value="">Pilih klien...</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-600">Dari Tanggal</label>
+              <input type="date" id="rk_dari" class="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-600">Sampai Tanggal</label>
+              <input type="date" id="rk_sampai" class="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
+            </div>
+          </div>
+          <div class="flex gap-2 mb-4">
+            <button onclick="pratinjauRekapKehadiran()" id="btn_rk_pratinjau" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-lg px-4 py-2.5 transition">Pratinjau</button>
+            <a id="btn_rk_buka" href="#" target="_blank" rel="noopener" class="hidden bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold rounded-lg px-4 py-2.5 transition">Buka/Cetak PDF</a>
+          </div>
+          <div id="rk_preview_area"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- View untuk role selain Marketing/CS: modul belum dibangun di tahap ini -->
     <div id="view-belum-tersedia" class="hidden bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
       <h2 class="text-sm font-semibold text-slate-800 mb-1">Modul untuk peran Anda belum tersedia</h2>
-      <p class="text-xs text-slate-500">Tahap 6 baru membangun Modul 1 (Form Marketing). Modul CS/Unit/Admin MCU/Finance menyusul di tahap berikutnya.</p>
+      <p class="text-xs text-slate-500">Tahap 6 baru membangun Modul 1 (Form Marketing) & Modul 2 (Form CS). Modul Unit/Admin MCU/Finance menyusul di tahap berikutnya.</p>
     </div>
   </main>
-  <footer class="max-w-5xl mx-auto px-5 pb-10 text-[11px] text-slate-400">Portal Staf MCU — Tahap 6 Modul 1 (Marketing). Data tersimpan langsung ke Google Sheets yang sama dengan tools existing.</footer>
+  <footer class="max-w-5xl mx-auto px-5 pb-10 text-[11px] text-slate-400">Portal Staf MCU — Tahap 6 Modul 1 (Marketing) & Modul 2 (CS). Data tersimpan langsung ke Google Sheets yang sama dengan tools existing.</footer>
 </div>
 
 <script>
@@ -417,15 +482,18 @@ async function enterApp() {
   document.getElementById("whoLabel").textContent = currentUser.nama + " · " + currentUser.role;
 
   const role = (currentUser.role || "").toLowerCase();
-  if (role.indexOf("marketing") > -1 || role.indexOf("admin") > -1) {
-    document.getElementById("view-marketing").classList.remove("hidden");
-    document.getElementById("view-belum-tersedia").classList.add("hidden");
+  const bisaMarketing = role.indexOf("marketing") > -1 || role.indexOf("admin") > -1;
+  const bisaCs = role.indexOf("cs") > -1 || role.indexOf("admin") > -1;
+  document.getElementById("view-marketing").classList.toggle("hidden", !bisaMarketing);
+  document.getElementById("view-cs").classList.toggle("hidden", !bisaCs);
+  document.getElementById("view-belum-tersedia").classList.toggle("hidden", bisaMarketing || bisaCs);
+  if (bisaMarketing) {
     await muatMasterUnit();
     refreshManualDropdowns();
     muatKlien(); muatPaket(); muatPeserta(); updatePaketDropzoneState();
-  } else {
-    document.getElementById("view-marketing").classList.add("hidden");
-    document.getElementById("view-belum-tersedia").classList.remove("hidden");
+  }
+  if (bisaCs) {
+    if (!bisaMarketing) await muatKlienUntukCs(); // kalau bukan Marketing/Admin, muatKlien() marketing tidak jalan — isi dropdown klien CS scr terpisah
   }
 }
 
@@ -483,6 +551,18 @@ document.addEventListener("change", (e) => {
 });
 
 /* ---------------- Master Klien ---------------- */
+// Dipakai bersama muatKlien() (role Marketing/Admin) & muatKlienUntukCs() (role CS tanpa akses Marketing)
+// supaya dropdown klien di 2 view itu selalu konsisten, tanpa duplikasi logika.
+function _isiDropdownKlien_(ids, data) {
+  ids.forEach(id => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    const keep = sel.value;
+    const placeholder = sel.options[0].outerHTML;
+    sel.innerHTML = placeholder + data.map(r => `<option value="${escapeAttr(r.kodeKlien)}">${escapeHtml(r.kodeKlien)} — ${escapeHtml(r.namaKlien)}</option>`).join("");
+    sel.value = keep;
+  });
+}
 async function muatKlien() {
   const j = await apiCall("getMasterKlien");
   if (!j.ok) { toast(j.error, true); return; }
@@ -494,14 +574,15 @@ async function muatKlien() {
       <td class="px-3 py-2">${escapeHtml(r.skemaTagihan)}</td><td class="px-3 py-2">${escapeHtml(r.picMarketing)||"-"}</td>
       <td class="px-3 py-2">${escapeHtml(r.lokasiMcu)||"-"}</td></tr>`;
   });
-  // isi dropdown klien di tab peserta
-  ["ps_klien", "ps_klien_import", "ps_filter_klien"].forEach(id => {
-    const sel = document.getElementById(id);
-    const keep = sel.value;
-    const placeholder = sel.options[0].outerHTML;
-    sel.innerHTML = placeholder + j.data.map(r => `<option value="${escapeAttr(r.kodeKlien)}">${escapeHtml(r.kodeKlien)} — ${escapeHtml(r.namaKlien)}</option>`).join("");
-    sel.value = keep;
-  });
+  // isi dropdown klien di tab peserta (Marketing) + tab CS (kalau user ini jg dapat akses CS, mis. Admin)
+  _isiDropdownKlien_(["ps_klien", "ps_klien_import", "ps_filter_klien", "cs_klien", "rk_klien"], j.data);
+}
+// Versi ringan utk role CS murni (tidak dapat akses view Marketing) — cuma isi dropdown klien di
+// view CS, tidak sentuh tbl_klien/tab Marketing sama sekali.
+async function muatKlienUntukCs() {
+  const j = await apiCall("getMasterKlien");
+  if (!j.ok) { toast(j.error, true); return; }
+  _isiDropdownKlien_(["cs_klien", "rk_klien"], j.data);
 }
 async function simpanKlien() {
   const body = {
@@ -851,6 +932,131 @@ async function commitPesertaImport() {
   document.getElementById("ps_preview_area").innerHTML = "";
   document.getElementById("ps_file").value = "";
   muatPeserta();
+}
+
+/* ============================== MODUL 2: Form CS (Kehadiran + Rekap Kehadiran PDF) ============================== */
+function switchTabCs(id, btnEl) {
+  document.querySelectorAll("#view-cs .tab-btn-cs").forEach(b => {
+    b.classList.remove("text-teal-700", "border-teal-600");
+    b.classList.add("text-slate-500", "border-transparent");
+  });
+  document.querySelectorAll("#view-cs .subview-cs").forEach(s => s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+  if (btnEl) {
+    btnEl.classList.remove("text-slate-500", "border-transparent");
+    btnEl.classList.add("text-teal-700", "border-teal-600");
+  }
+}
+
+async function muatPesertaKehadiran() {
+  const klien = document.getElementById("cs_klien").value;
+  const tbody = document.getElementById("tbl_kehadiran");
+  const summary = document.getElementById("cs_kehadiran_summary");
+  if (!klien) {
+    tbody.innerHTML = '<tr><td class="px-3 py-2" colspan="6">Pilih klien dulu.</td></tr>';
+    summary.textContent = "";
+    return;
+  }
+  tbody.innerHTML = '<tr><td class="px-3 py-2" colspan="6">Memuat...</td></tr>';
+  let j;
+  try {
+    j = await apiCall("getDataPeserta", { kodeKlien: klien });
+  } catch (err) {
+    toast("Gagal memuat daftar peserta: " + (err && err.message ? err.message : String(err)), true);
+    tbody.innerHTML = '<tr><td class="px-3 py-2" colspan="6">Gagal memuat.</td></tr>';
+    return;
+  }
+  if (!j.ok) { toast(j.error, true); tbody.innerHTML = '<tr><td class="px-3 py-2" colspan="6">Gagal memuat.</td></tr>'; return; }
+  tbody.innerHTML = j.data.length ? "" : '<tr><td class="px-3 py-2" colspan="6">Belum ada peserta terdaftar utk klien ini.</td></tr>';
+  const todayIso = new Date().toISOString().slice(0, 10);
+  j.data.forEach(r => {
+    const isHadir = r.statusKehadiran === "Hadir";
+    const isTidak = r.statusKehadiran === "Tidak Hadir";
+    const badgeClass = isHadir ? "bg-emerald-50 text-emerald-700" : (isTidak ? "bg-red-50 text-red-700" : "bg-slate-100 text-slate-500");
+    const badgeText = r.statusKehadiran || "Belum ditandai";
+    tbody.innerHTML += `<tr class="border-b border-slate-100" data-id="${escapeAttr(r.idPeserta)}">
+      <td class="px-3 py-2">${escapeHtml(r.namaPeserta)}</td>
+      <td class="px-3 py-2">${escapeHtml(r.kodePaket)}</td>
+      <td class="px-3 py-2">${escapeHtml(r.tanggalRencana)}</td>
+      <td class="px-3 py-2"><span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${badgeClass}">${escapeHtml(badgeText)}</span></td>
+      <td class="px-3 py-2"><input type="date" class="in-tgl-hadir border border-slate-300 rounded-lg px-2 py-1 text-xs" value="${escapeAttr(r.tanggalHadirAktual || (isHadir ? "" : todayIso))}" ${isHadir ? "" : "disabled"}></td>
+      <td class="px-3 py-2 whitespace-nowrap">
+        <button class="btn-tandai-hadir bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-semibold rounded-lg px-2.5 py-1.5 mr-1">Hadir</button>
+        <button class="btn-tandai-tidak bg-slate-100 hover:bg-slate-200 text-slate-600 text-[11px] font-semibold rounded-lg px-2.5 py-1.5">Tidak Hadir</button>
+      </td></tr>`;
+  });
+  const jumlahHadir = j.data.filter(r => r.statusKehadiran === "Hadir").length;
+  summary.textContent = `${j.data.length} peserta terdaftar, ${jumlahHadir} sudah ditandai Hadir.`;
+}
+
+// Delegasi klik tombol Hadir/Tidak Hadir per baris — pola sama dgn tombol hapus item Paket
+// (delegasi 1x ke document, bukan re-bind listener tiap kali tabel di-render ulang).
+document.addEventListener("click", async (e) => {
+  const tr = e.target.closest("#tbl_kehadiran tr[data-id]");
+  if (!tr) return;
+  let statusBaru = null;
+  if (e.target.classList.contains("btn-tandai-hadir")) statusBaru = "Hadir";
+  else if (e.target.classList.contains("btn-tandai-tidak")) statusBaru = "Tidak Hadir";
+  else return;
+  const idPeserta = tr.getAttribute("data-id");
+  const tglInput = tr.querySelector(".in-tgl-hadir");
+  const tanggalHadirAktual = statusBaru === "Hadir" ? (tglInput.value || new Date().toISOString().slice(0, 10)) : "";
+  try {
+    const j = await apiCall("updateKehadiran", { idPeserta, statusKehadiran: statusBaru, tanggalHadirAktual });
+    if (!j.ok) { toast(j.error, true); return; }
+    toast("Status kehadiran diperbarui.");
+    muatPesertaKehadiran();
+  } catch (err) {
+    toast("Gagal menyimpan status kehadiran: " + (err && err.message ? err.message : String(err)), true);
+  }
+});
+// Ubah tanggal hadir manual (mis. CS salah klik tanggal default hari ini) tanpa perlu klik tombol Hadir lagi.
+document.addEventListener("change", async (e) => {
+  if (!e.target.classList.contains("in-tgl-hadir") || e.target.disabled) return;
+  const tr = e.target.closest("#tbl_kehadiran tr[data-id]");
+  if (!tr) return;
+  const idPeserta = tr.getAttribute("data-id");
+  try {
+    const j = await apiCall("updateKehadiran", { idPeserta, statusKehadiran: "Hadir", tanggalHadirAktual: e.target.value });
+    if (!j.ok) { toast(j.error, true); return; }
+    toast("Tanggal hadir diperbarui.");
+  } catch (err) {
+    toast("Gagal menyimpan tanggal hadir: " + (err && err.message ? err.message : String(err)), true);
+  }
+});
+
+let _rkPdfBlobUrl = null;
+async function pratinjauRekapKehadiran() {
+  const kodeKlien = document.getElementById("rk_klien").value;
+  const dariTanggal = document.getElementById("rk_dari").value;
+  const sampaiTanggal = document.getElementById("rk_sampai").value;
+  if (!kodeKlien) { toast("Pilih klien dulu.", true); return; }
+  if (!dariTanggal || !sampaiTanggal) { toast("Isi Dari Tanggal dan Sampai Tanggal.", true); return; }
+  const btn = document.getElementById("btn_rk_pratinjau");
+  const asalTeks = btn.textContent;
+  btn.disabled = true; btn.textContent = "Memproses...";
+  document.getElementById("btn_rk_buka").classList.add("hidden");
+  document.getElementById("rk_preview_area").innerHTML = "";
+  try {
+    const j = await apiCall("generateRekapKehadiranPdf", { kodeKlien, dariTanggal, sampaiTanggal });
+    if (!j.ok) { toast(j.error, true); return; }
+    const byteChars = atob(j.pdfBase64);
+    const bytes = new Uint8Array(byteChars.length);
+    for (let i = 0; i < byteChars.length; i++) bytes[i] = byteChars.charCodeAt(i);
+    const blob = new Blob([bytes], { type: "application/pdf" });
+    if (_rkPdfBlobUrl) URL.revokeObjectURL(_rkPdfBlobUrl);
+    _rkPdfBlobUrl = URL.createObjectURL(blob);
+    document.getElementById("rk_preview_area").innerHTML =
+      `<iframe src="${_rkPdfBlobUrl}" class="w-full rounded-xl border border-slate-200" style="height:520px"></iframe>`;
+    const btnBuka = document.getElementById("btn_rk_buka");
+    btnBuka.href = _rkPdfBlobUrl;
+    btnBuka.download = j.fileName || "Rekap_Kehadiran.pdf";
+    btnBuka.classList.remove("hidden");
+  } catch (err) {
+    toast("Gagal membuat pratinjau PDF: " + (err && err.message ? err.message : String(err)), true);
+  } finally {
+    btn.disabled = false; btn.textContent = asalTeks;
+  }
 }
 </script>
 </body>
