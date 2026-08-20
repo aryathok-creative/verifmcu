@@ -212,8 +212,8 @@
         <div class="card">
           <h2>Daftar Paket &amp; Item</h2>
           <div class="tbl-wrap"><table>
-            <thead><tr><th>Kode Paket</th><th>Nama Paket</th><th>Kategori</th><th>Parameter</th><th>Unit PJ</th><th>Harga</th></tr></thead>
-            <tbody id="tbl_paket"><tr><td colspan="6">Memuat...</td></tr></tbody>
+            <thead><tr><th>Kode Paket</th><th>Nama Paket</th><th>Kategori</th><th>Parameter</th><th>Unit PJ</th><th>Harga</th><th></th></tr></thead>
+            <tbody id="tbl_paket"><tr><td colspan="7">Memuat...</td></tr></tbody>
           </table></div>
           <button class="btn btn-ghost btn-sm" onclick="muatPaket()">🔄 Muat Ulang</button>
         </div>
@@ -423,15 +423,33 @@ async function simpanKlien() {
 }
 
 /* ---------------- Master Paket ---------------- */
+function escapeHtml(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+function escapeAttr(s) { return escapeHtml(s).replace(/`/g, "&#96;"); }
+
 async function muatPaket() {
   const j = await apiCall("getMasterPaket");
   if (!j.ok) { toast(j.error, true); return; }
   const tbody = document.getElementById("tbl_paket");
-  tbody.innerHTML = j.items.length ? "" : '<tr><td colspan="6">Belum ada data paket.</td></tr>';
+  tbody.innerHTML = j.items.length ? "" : '<tr><td colspan="7">Belum ada data paket.</td></tr>';
   j.items.forEach(r => {
-    tbody.innerHTML += `<tr><td>${r.kodePaket}</td><td>${r.namaPaket}</td><td>${r.kategori||"-"}</td><td>${r.parameter}</td><td>${r.unitPJ||"-"}</td><td>${Number(r.hargaRetail||0).toLocaleString("id-ID")}</td></tr>`;
+    tbody.innerHTML += `<tr data-kode="${escapeAttr(r.kodePaket)}" data-param="${escapeAttr(r.parameter)}">
+      <td>${escapeHtml(r.kodePaket)}</td><td>${escapeHtml(r.namaPaket)}</td><td>${escapeHtml(r.kategori)||"-"}</td>
+      <td>${escapeHtml(r.parameter)}</td><td>${escapeHtml(r.unitPJ)||"-"}</td><td>${Number(r.hargaRetail||0).toLocaleString("id-ID")}</td>
+      <td><button class="btn btn-ghost btn-sm btn-del-item" title="Hapus item ini">🗑</button></td></tr>`;
   });
 }
+document.addEventListener("click", async (e) => {
+  if (!e.target.classList.contains("btn-del-item")) return;
+  const tr = e.target.closest("tr");
+  const kode = tr.dataset.kode, param = tr.dataset.param;
+  if (!confirm(`Hapus item "${param}" dari paket ${kode}? Ini menghapus baris tsb dari Master_Paket di Sheets.`)) return;
+  const j = await apiCall("deleteMasterPaketItem", { kodePaket: kode, parameter: param });
+  if (!j.ok) { toast(j.error, true); return; }
+  toast("Item dihapus.");
+  muatPaket();
+});
 async function simpanPaketManual() {
   const body = {
     kodePaket: document.getElementById("pk_kode").value.trim(),
@@ -475,6 +493,11 @@ function onClickPaketDropzone() {
   document.getElementById("pk_file").click();
 }
 
+// Kolom file gaya MC0115.xlsx (export SIMRS, dikonfirmasi dari file asli 2026-08-20):
+// ItemCode/ItemName1 = KODE & NAMA PAKET (konstan tiap baris, BUKAN nama parameter!),
+// ItemCode_1/itemname1_1 = kode & nama parameter/item sesungguhnya, LineAmount = harga.
+// Nama kolom lain (Nama Parameter/Harga/dst) tetap dijaga sbg fallback kalau suatu saat filenya
+// beda format (mis. ditulis manual, bukan export SIMRS langsung).
 function parsePaketFile(file) {
   if (!file) return;
   const kode = document.getElementById("pk_kode_import").value.trim();
@@ -487,8 +510,9 @@ function parsePaketFile(file) {
     const raw = XLSX.utils.sheet_to_json(ws, { defval: "" });
     const rows = raw.map(r => ({
       kodePaket: kode, namaPaket: nama,
-      parameter: r["Nama Parameter"] || r["ItemName1"] || r["Parameter"] || r["Nama Item"] || "",
-      hargaRetail: r["Harga"] || r["NettAmount"] || r["Harga Item"] || 0,
+      kodeItemSimrs: r["ItemCode_1"] || r["Kode Item"] || "",
+      parameter: r["itemname1_1"] || r["Nama Parameter"] || r["Nama Item"] || r["Parameter"] || "",
+      hargaRetail: r["LineAmount"] !== "" && r["LineAmount"] != null ? r["LineAmount"] : (r["Harga"] || r["NettAmount"] || r["Harga Item"] || 0),
       kategori: "", unitPJ: ""
     })).filter(r => r.parameter);
     renderPaketPreview(rows);
@@ -502,25 +526,32 @@ async function renderPaketPreview(rows) {
   const area = document.getElementById("pk_preview_area");
   area.innerHTML = `
     <div class="banner ${j.jumlahValid===j.jumlahTotal?"banner-info":"banner-warn"}">
-      ${j.jumlahValid} dari ${j.jumlahTotal} baris valid. Lengkapi Kategori/Unit PJ tiap baris (opsional) lalu klik Simpan.
+      ${j.jumlahValid} dari ${j.jumlahTotal} baris valid. Kategori/Unit PJ tidak ada di file SIMRS —
+      sudah diisi otomatis KALAU nama itemnya pernah dipakai di paket lain, sisanya isi manual.
+      Centang "Simpan?" untuk pilih baris mana yang mau disimpan (mis. kalau salah satu ternyata
+      keliru, hilangkan centangnya), lalu klik Simpan.
     </div>
     <div class="tbl-wrap"><table>
-      <thead><tr><th>Status</th><th>Parameter</th><th>Kategori</th><th>Unit PJ</th><th>Harga</th></tr></thead>
+      <thead><tr><th>Simpan?</th><th>Status</th><th>Kode Item</th><th>Parameter</th><th>Kategori</th><th>Unit PJ</th><th>Harga</th></tr></thead>
       <tbody>${j.rows.map((r,i)=>`
         <tr>
-          <td>${r.valid?'<span class="badge badge-ok">✓ OK</span>':'<span class="badge badge-danger">✕ '+r.masalah+'</span>'}</td>
-          <td>${r.parameter}</td>
-          <td><input class="row-kategori" data-i="${i}" value="${r.kategori||""}" style="width:100%;padding:5px;border:1px solid var(--border);border-radius:6px;"></td>
-          <td><input class="row-unit" data-i="${i}" value="${r.unitPJ||""}" style="width:100%;padding:5px;border:1px solid var(--border);border-radius:6px;"></td>
+          <td><input type="checkbox" class="row-include" data-i="${i}" ${r.valid ? "checked" : "disabled"}></td>
+          <td>${r.valid?'<span class="badge badge-ok">✓ OK</span>':'<span class="badge badge-danger">✕ '+escapeHtml(r.masalah)+'</span>'}</td>
+          <td>${escapeHtml(r.kodeItemSimrs)||"-"}</td>
+          <td>${escapeHtml(r.parameter)}</td>
+          <td><input class="row-kategori" data-i="${i}" value="${escapeAttr(r.kategori||"")}" style="width:100%;padding:5px;border:1px solid var(--border);border-radius:6px;"></td>
+          <td><input class="row-unit" data-i="${i}" value="${escapeAttr(r.unitPJ||"")}" style="width:100%;padding:5px;border:1px solid var(--border);border-radius:6px;"></td>
           <td>${Number(r.hargaRetail||0).toLocaleString("id-ID")}</td>
         </tr>`).join("")}</tbody>
     </table></div>
-    <div class="actions"><button class="btn btn-primary btn-sm" onclick="commitPaketImport()">Simpan Semua yang Valid</button></div>`;
+    <div class="actions"><button class="btn btn-primary btn-sm" onclick="commitPaketImport()">Simpan yang Dicentang</button></div>`;
 }
 async function commitPaketImport() {
   document.querySelectorAll(".row-kategori").forEach(inp => _paketPreviewRows[inp.dataset.i].kategori = inp.value);
   document.querySelectorAll(".row-unit").forEach(inp => _paketPreviewRows[inp.dataset.i].unitPJ = inp.value);
-  const validRows = _paketPreviewRows.filter(r => r.valid);
+  const includedIdx = new Set(Array.from(document.querySelectorAll(".row-include:checked")).map(inp => Number(inp.dataset.i)));
+  const validRows = _paketPreviewRows.filter((r, i) => r.valid && includedIdx.has(i));
+  if (!validRows.length) { toast("Tidak ada baris yang dicentang untuk disimpan.", true); return; }
   const j = await apiCall("commitImportPaket", { rows: validRows });
   toast(`${j.ditulis} item paket disimpan, ${j.dilewati} dilewati.`);
   document.getElementById("pk_preview_area").innerHTML = "";
