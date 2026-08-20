@@ -108,8 +108,18 @@
   <main class="max-w-5xl mx-auto px-5 py-6 pb-16">
     <div id="banner-area"></div>
 
-    <!-- View Marketing (Modul 1 — satu-satunya modul yang sudah dibangun) -->
-    <div id="view-marketing">
+    <!-- ============ NAVIGASI MODUL (level di ATAS tab) ============
+         BUG YANG DIPERBAIKI: sebelumnya tiap view modul cuma di-toggle .hidden sendiri-sendiri
+         berdasarkan hak akses, jadi user dgn peran ganda (mis. "Admin" = Marketing + CS) melihat
+         SEMUA view sekaligus, menumpuk ke bawah — efeknya bagian "Tandai Kehadiran" (view CS)
+         kelihatan nempel di bawah tab Marketing mana pun yang sedang dibuka, seolah section siluman
+         yang muncul di semua tab. Sekarang: cuma SATU view modul yang aktif pada satu waktu, dipilih
+         lewat baris navigasi ini. Baris nav otomatis disembunyikan kalau user cuma punya akses ke 1
+         modul (mis. staf CS murni) supaya tidak menambah klik yang tidak perlu. -->
+    <div id="nav-modul" class="hidden flex-wrap gap-2 mb-5"></div>
+
+    <!-- View Marketing (Modul 1) -->
+    <div id="view-marketing" class="view-modul hidden">
       <div class="flex gap-1 border-b border-slate-200 mb-5">
         <button class="tab-btn px-4 py-2.5 text-sm font-semibold text-teal-700 border-b-2 border-teal-600 -mb-px" onclick="switchTab('mk-klien', this)">Klien Baru</button>
         <button class="tab-btn px-4 py-2.5 text-sm font-semibold text-slate-500 border-b-2 border-transparent -mb-px" onclick="switchTab('mk-paket', this)">Paket Pemeriksaan</button>
@@ -288,7 +298,7 @@
     </div>
 
     <!-- View CS (Modul 2 — Kehadiran + Rekap Kehadiran PDF) -->
-    <div id="view-cs" class="hidden">
+    <div id="view-cs" class="view-modul hidden">
       <div class="flex gap-1 border-b border-slate-200 mb-5">
         <button class="tab-btn-cs px-4 py-2.5 text-sm font-semibold text-teal-700 border-b-2 border-teal-600 -mb-px" onclick="switchTabCs('cs-kehadiran', this)">Tandai Kehadiran</button>
         <button class="tab-btn-cs px-4 py-2.5 text-sm font-semibold text-slate-500 border-b-2 border-transparent -mb-px" onclick="switchTabCs('cs-rekap', this)">Cetak Rekap Kehadiran</button>
@@ -297,26 +307,96 @@
       <!-- Tab: Tandai Kehadiran -->
       <div class="subview-cs active" id="cs-kehadiran">
         <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 mb-4">
-          <h2 class="text-sm font-semibold text-slate-800 mb-3">Tandai Kehadiran Peserta</h2>
+          <h2 class="text-sm font-semibold text-slate-800 mb-1">Tandai Kehadiran Peserta</h2>
+          <p class="text-xs text-slate-500 mb-4">Pilih klien, cari peserta, ubah statusnya lewat dropdown, lalu klik <b>Simpan Perubahan</b>. Perubahan belum tersimpan ditandai baris kuning &amp; tetap diingat walau Anda pindah halaman atau mengubah kata kunci pencarian.</p>
+
+          <!-- Baris 1: pilih klien -->
           <div class="mb-3">
             <label class="block text-xs font-medium text-slate-600">Klien</label>
-            <select id="cs_klien" class="mt-1 w-full sm:w-80 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" onchange="muatPesertaKehadiran()">
+            <select id="cs_klien" class="mt-1 w-full lg:w-[34rem] border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500" onchange="muatPesertaKehadiran()">
               <option value="">Pilih klien...</option>
             </select>
           </div>
-          <div class="text-xs text-slate-500 mb-3" id="cs_kehadiran_summary"></div>
+
+          <!-- Baris 2: PENCARIAN + filter status + jumlah baris/halaman.
+               Dibuat client-side (memfilter data yang sudah dimuat, bukan panggil server tiap ketik)
+               karena tiap panggilan Apps Script butuh beberapa detik — kalau tiap huruf memanggil
+               server, mengetik nama jadi terasa macet. -->
+          <div id="cs_toolbar" class="hidden grid grid-cols-1 sm:grid-cols-12 gap-2 mb-3">
+            <div class="sm:col-span-6">
+              <label class="block text-xs font-medium text-slate-600">Cari peserta</label>
+              <div class="relative mt-1">
+                <input id="cs_cari" type="search" autocomplete="off" placeholder="Ketik nama peserta / ID peserta / kode paket..."
+                  class="w-full border border-slate-300 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
+                <svg class="absolute left-3 top-2.5 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.3-4.3" stroke-linecap="round"></path>
+                </svg>
+              </div>
+            </div>
+            <div class="sm:col-span-4">
+              <label class="block text-xs font-medium text-slate-600">Tampilkan status</label>
+              <select id="cs_filter_status" class="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
+                <option value="">Semua status</option>
+                <option value="BELUM">Belum ditandai</option>
+                <option value="Hadir">Hadir</option>
+                <option value="Tidak Hadir">Tidak Hadir</option>
+              </select>
+            </div>
+            <div class="sm:col-span-2">
+              <label class="block text-xs font-medium text-slate-600">Baris/hal.</label>
+              <select id="cs_page_size" class="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
+                <option value="25">25</option><option value="50" selected>50</option>
+                <option value="100">100</option><option value="200">200</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Baris 3: aksi massal utk baris yang dicentang -->
+          <div id="cs_bulkbar" class="hidden flex flex-wrap items-center gap-2 mb-3 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
+            <span class="text-xs text-slate-600"><b id="cs_jml_pilih">0</b> baris dicentang</span>
+            <span class="text-slate-300">|</span>
+            <span class="text-xs text-slate-600">Ubah semua yang dicentang jadi:</span>
+            <select id="cs_bulk_status" class="border border-slate-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
+              <option value="Hadir">Hadir</option>
+              <option value="Tidak Hadir">Tidak Hadir</option>
+              <option value="">(Kosongkan / belum ditandai)</option>
+            </select>
+            <input type="date" id="cs_bulk_tgl" class="border border-slate-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-teal-500" title="Tanggal hadir untuk baris yang dicentang">
+            <button onclick="terapkanMassalKehadiran()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold rounded-lg px-3 py-1.5 transition">Terapkan ke yang dicentang</button>
+          </div>
+
+          <div class="text-xs text-slate-500 mb-2" id="cs_kehadiran_summary"></div>
+
           <div class="overflow-x-auto border border-slate-200 rounded-xl">
             <table class="w-full text-xs">
               <thead><tr class="bg-slate-50">
+                <th class="text-left border-b border-slate-200 px-3 py-2 w-8">
+                  <input type="checkbox" id="cs_check_all" title="Centang semua baris di halaman ini" class="align-middle cursor-pointer">
+                </th>
                 <th class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-200 px-3 py-2">Nama Peserta</th>
                 <th class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-200 px-3 py-2">Kode Paket</th>
                 <th class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-200 px-3 py-2">Tgl Rencana</th>
                 <th class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-200 px-3 py-2">Status Kehadiran</th>
                 <th class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-200 px-3 py-2">Tgl Hadir Aktual</th>
-                <th class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-200 px-3 py-2">Aksi</th>
               </tr></thead>
-              <tbody id="tbl_kehadiran"><tr><td class="px-3 py-2" colspan="6">Pilih klien dulu.</td></tr></tbody>
+              <tbody id="tbl_kehadiran"><tr><td class="px-3 py-3 text-slate-500" colspan="6">Pilih klien dulu.</td></tr></tbody>
             </table>
+          </div>
+
+          <!-- Baris 4: navigasi halaman -->
+          <div id="cs_pager" class="hidden flex flex-wrap items-center justify-between gap-2 mt-3">
+            <span class="text-xs text-slate-500" id="cs_pager_info"></span>
+            <div class="flex items-center gap-1">
+              <button onclick="gantiHalKehadiran(-1)" id="cs_prev" class="bg-slate-100 hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed text-slate-600 text-xs font-semibold rounded-lg px-3 py-1.5 transition">&larr; Sebelumnya</button>
+              <button onclick="gantiHalKehadiran(1)" id="cs_next" class="bg-slate-100 hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed text-slate-600 text-xs font-semibold rounded-lg px-3 py-1.5 transition">Berikutnya &rarr;</button>
+            </div>
+          </div>
+
+          <!-- Baris 5: tombol simpan (satu-satunya yang benar-benar menulis ke Sheets) -->
+          <div id="cs_savebar" class="hidden flex flex-wrap items-center gap-3 mt-4 pt-4 border-t border-slate-200">
+            <button onclick="simpanPerubahanKehadiran()" id="btn_cs_simpan" class="bg-teal-600 hover:bg-teal-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg px-4 py-2.5 transition" disabled>Simpan Perubahan</button>
+            <button onclick="batalkanPerubahanKehadiran()" id="btn_cs_batal" class="bg-slate-100 hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed text-slate-600 text-sm font-semibold rounded-lg px-4 py-2.5 transition" disabled>Batalkan Perubahan</button>
+            <span class="text-xs text-slate-500" id="cs_draft_info"></span>
           </div>
         </div>
       </div>
@@ -352,7 +432,7 @@
     </div>
 
     <!-- View untuk role selain Marketing/CS: modul belum dibangun di tahap ini -->
-    <div id="view-belum-tersedia" class="hidden bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
+    <div id="view-belum-tersedia" class="view-modul hidden bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
       <h2 class="text-sm font-semibold text-slate-800 mb-1">Modul untuk peran Anda belum tersedia</h2>
       <p class="text-xs text-slate-500">Tahap 6 baru membangun Modul 1 (Form Marketing) & Modul 2 (Form CS). Modul Unit/Admin MCU/Finance menyusul di tahap berikutnya.</p>
     </div>
@@ -484,9 +564,28 @@ async function enterApp() {
   const role = (currentUser.role || "").toLowerCase();
   const bisaMarketing = role.indexOf("marketing") > -1 || role.indexOf("admin") > -1;
   const bisaCs = role.indexOf("cs") > -1 || role.indexOf("admin") > -1;
-  document.getElementById("view-marketing").classList.toggle("hidden", !bisaMarketing);
-  document.getElementById("view-cs").classList.toggle("hidden", !bisaCs);
-  document.getElementById("view-belum-tersedia").classList.toggle("hidden", bisaMarketing || bisaCs);
+
+  // Susun daftar modul yang boleh diakses user ini, lalu tampilkan HANYA SATU pada satu waktu.
+  // (Sebelumnya tiap view di-toggle sendiri-sendiri, jadi Admin melihat view Marketing DAN view CS
+  //  menumpuk sekaligus — itu penyebab "section Tandai Kehadiran muncul di semua tab".)
+  const modulTersedia = [];
+  if (bisaMarketing) modulTersedia.push({ id: "view-marketing", label: "Marketing" });
+  if (bisaCs) modulTersedia.push({ id: "view-cs", label: "CS — Kehadiran" });
+  if (!modulTersedia.length) modulTersedia.push({ id: "view-belum-tersedia", label: "Info" });
+
+  const nav = document.getElementById("nav-modul");
+  nav.innerHTML = modulTersedia.map(m =>
+    `<button type="button" class="nav-modul-btn text-sm font-semibold rounded-lg px-4 py-2 transition" data-view="${escapeAttr(m.id)}">${escapeHtml(m.label)}</button>`
+  ).join("");
+  // Baris nav cuma berguna kalau ada lebih dari 1 modul — staf CS murni tidak perlu lihat tombol
+  // yang isinya cuma 1 pilihan.
+  nav.classList.toggle("hidden", modulTersedia.length < 2);
+  nav.classList.toggle("flex", modulTersedia.length >= 2);
+  nav.querySelectorAll(".nav-modul-btn").forEach(b => {
+    b.addEventListener("click", () => switchModul(b.getAttribute("data-view")));
+  });
+  switchModul(modulTersedia[0].id);
+
   if (bisaMarketing) {
     await muatMasterUnit();
     refreshManualDropdowns();
@@ -495,6 +594,22 @@ async function enterApp() {
   if (bisaCs) {
     if (!bisaMarketing) await muatKlienUntukCs(); // kalau bukan Marketing/Admin, muatKlien() marketing tidak jalan — isi dropdown klien CS scr terpisah
   }
+}
+
+// Tampilkan tepat SATU view modul, sembunyikan sisanya. Dipakai baris navigasi #nav-modul.
+function switchModul(viewId) {
+  document.querySelectorAll(".view-modul").forEach(v => v.classList.toggle("hidden", v.id !== viewId));
+  document.querySelectorAll("#nav-modul .nav-modul-btn").forEach(b => {
+    const aktif = b.getAttribute("data-view") === viewId;
+    b.classList.toggle("bg-teal-600", aktif);
+    b.classList.toggle("text-white", aktif);
+    b.classList.toggle("shadow-sm", aktif);
+    b.classList.toggle("bg-white", !aktif);
+    b.classList.toggle("text-slate-600", !aktif);
+    b.classList.toggle("border", !aktif);
+    b.classList.toggle("border-slate-200", !aktif);
+    b.classList.toggle("hover:bg-slate-100", !aktif);
+  });
 }
 
 function switchTab(id, btnEl) {
@@ -948,82 +1063,336 @@ function switchTabCs(id, btnEl) {
   }
 }
 
+/* ---------------- Tabel "Tandai Kehadiran" ----------------
+   Dirancang utk skala besar (klien dgn ratusan s/d ribuan peserta). 3 prinsip:
+
+   1) PENCARIAN & PENYARINGAN DI SISI BROWSER. Data 1 klien dimuat sekali dari server, lalu
+      pencarian/filter/pindah halaman diproses di browser. Alasannya: tiap panggilan Apps Script
+      makan beberapa detik — kalau tiap huruf yang diketik memanggil server, mengetik nama akan
+      terasa macet total.
+   2) HANYA BARIS HALAMAN AKTIF YANG DIGAMBAR. Menggambar 1000 <tr> sekaligus bikin browser berat
+      (apalagi kalau dirakit pakai innerHTML += di dalam loop, yang memaksa browser membongkar-pasang
+      ulang seluruh tabel tiap baris). Sekarang maksimal 200 baris per halaman & dirakit sekali
+      lewat array.join("").
+   3) CENTANGAN + PERUBAHAN DISIMPAN DI MEMORI, BUKAN DIBACA DARI DOM. Baris yang sedang tidak
+      tampil (halaman lain / tersaring pencarian) memang tidak ada di DOM — jadi kalau state dibaca
+      dari DOM, centangan & perubahan orang akan hilang diam-diam begitu dia mengetik pencarian.
+      Karena itu dipakai Map/Set dgn kunci ID_Peserta.                                            */
+
+let _csRows = [];             // seluruh peserta klien terpilih, apa adanya dari server
+let _csDraft = new Map();     // idPeserta -> {status, tgl} — perubahan yang BELUM ditulis ke Sheets
+let _csPilih = new Set();     // idPeserta yang barisnya dicentang
+let _csHal = 1;               // halaman aktif (1-based)
+
+function _csHariIni() { return new Date().toISOString().slice(0, 10); }
+
+// Status/tanggal yang HARUS ditampilkan: pakai nilai draft kalau baris ini sedang diubah,
+// kalau tidak pakai nilai asli dari Sheets.
+function _csStatusTampil(r) { return _csDraft.has(r.idPeserta) ? _csDraft.get(r.idPeserta).status : (r.statusKehadiran || ""); }
+function _csTglTampil(r) { return _csDraft.has(r.idPeserta) ? _csDraft.get(r.idPeserta).tgl : (r.tanggalHadirAktual || ""); }
+function _csBerubah(r) {
+  if (!_csDraft.has(r.idPeserta)) return false;
+  const d = _csDraft.get(r.idPeserta);
+  return d.status !== (r.statusKehadiran || "") || d.tgl !== (r.tanggalHadirAktual || "");
+}
+
+// Catat perubahan 1 baris ke draft (bukan langsung kirim ke server).
+function _csSetDraft(idPeserta, status, tgl) {
+  if (status === "Hadir") tgl = tgl || _csHariIni();
+  else tgl = ""; // "Tidak Hadir" / dikosongkan -> tanggal hadir ikut dikosongkan (pola data asli)
+  _csDraft.set(idPeserta, { status: status, tgl: tgl });
+  _csPilih.add(idPeserta); // begitu diubah, otomatis ikut tercentang supaya tidak lupa disimpan
+}
+
+// Hasil penyaringan (pencarian + filter status), dipakai bersama utk render & info halaman.
+function _csTerfilter() {
+  const q = (document.getElementById("cs_cari").value || "").trim().toLowerCase();
+  const fs = document.getElementById("cs_filter_status").value;
+  return _csRows.filter(r => {
+    if (q) {
+      const gabungan = (String(r.namaPeserta || "") + " " + String(r.idPeserta || "") + " " + String(r.kodePaket || "")).toLowerCase();
+      if (gabungan.indexOf(q) === -1) return false;
+    }
+    if (fs) {
+      const st = _csStatusTampil(r);
+      if (fs === "BELUM" ? st !== "" : st !== fs) return false;
+    }
+    return true;
+  });
+}
+
+function _csUkuranHal() { return parseInt(document.getElementById("cs_page_size").value, 10) || 50; }
+
+function renderKehadiran() {
+  const tbody = document.getElementById("tbl_kehadiran");
+  const rows = _csTerfilter();
+  const ukuran = _csUkuranHal();
+  const totalHal = Math.max(1, Math.ceil(rows.length / ukuran));
+  if (_csHal > totalHal) _csHal = totalHal;
+  if (_csHal < 1) _csHal = 1;
+  const mulai = (_csHal - 1) * ukuran;
+  const halaman = rows.slice(mulai, mulai + ukuran);
+
+  if (!_csRows.length) {
+    tbody.innerHTML = '<tr><td class="px-3 py-3 text-slate-500" colspan="6">Belum ada peserta terdaftar untuk klien ini.</td></tr>';
+  } else if (!rows.length) {
+    tbody.innerHTML = '<tr><td class="px-3 py-3 text-slate-500" colspan="6">Tidak ada peserta yang cocok dengan pencarian/filter ini.</td></tr>';
+  } else {
+    // Dirakit sekali lewat array + join, bukan innerHTML += di dalam loop (jauh lebih ringan).
+    const potongan = halaman.map(r => {
+      const id = r.idPeserta;
+      const st = _csStatusTampil(r);
+      const tgl = _csTglTampil(r);
+      const berubah = _csBerubah(r);
+      const dicentang = _csPilih.has(id);
+      const warnaBaris = berubah ? "bg-amber-50" : "";
+      return `<tr class="border-b border-slate-100 ${warnaBaris}" data-id="${escapeAttr(id)}">
+        <td class="px-3 py-2 align-middle"><input type="checkbox" class="cs-pilih cursor-pointer align-middle"${dicentang ? " checked" : ""}></td>
+        <td class="px-3 py-2">${escapeHtml(r.namaPeserta)}${berubah ? ' <span class="text-[10px] font-semibold text-amber-700">(belum disimpan)</span>' : ""}<div class="text-[10px] text-slate-400">${escapeHtml(r.idPeserta)}</div></td>
+        <td class="px-3 py-2">${escapeHtml(r.kodePaket)}</td>
+        <td class="px-3 py-2">${escapeHtml(r.tanggalRencana)}</td>
+        <td class="px-3 py-2">
+          <select class="cs-status border border-slate-300 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
+            <option value=""${st === "" ? " selected" : ""}>Belum ditandai</option>
+            <option value="Hadir"${st === "Hadir" ? " selected" : ""}>Hadir</option>
+            <option value="Tidak Hadir"${st === "Tidak Hadir" ? " selected" : ""}>Tidak Hadir</option>
+          </select>
+        </td>
+        <td class="px-3 py-2"><input type="date" class="cs-tgl border border-slate-300 rounded-lg px-2 py-1 text-xs disabled:bg-slate-100 disabled:text-slate-400" value="${escapeAttr(tgl)}"${st === "Hadir" ? "" : " disabled"}></td>
+      </tr>`;
+    });
+    tbody.innerHTML = potongan.join("");
+  }
+
+  _csRefreshRingkasan(rows.length);
+
+  // Navigasi halaman
+  const pager = document.getElementById("cs_pager");
+  pager.classList.toggle("hidden", rows.length <= ukuran);
+  pager.classList.toggle("flex", rows.length > ukuran);
+  document.getElementById("cs_pager_info").textContent = rows.length
+    ? `Menampilkan ${mulai + 1}–${Math.min(mulai + ukuran, rows.length)} dari ${rows.length} peserta (halaman ${_csHal}/${totalHal})`
+    : "";
+  document.getElementById("cs_prev").disabled = _csHal <= 1;
+  document.getElementById("cs_next").disabled = _csHal >= totalHal;
+
+  // Centang-semua mencerminkan kondisi baris di HALAMAN INI saja (bukan seluruh data) —
+  // supaya tidak ada orang yang tanpa sadar mencentang 1000 baris sekaligus.
+  const chkAll = document.getElementById("cs_check_all");
+  const semuaTercentang = halaman.length > 0 && halaman.every(r => _csPilih.has(r.idPeserta));
+  chkAll.checked = semuaTercentang;
+  chkAll.indeterminate = !semuaTercentang && halaman.some(r => _csPilih.has(r.idPeserta));
+
+  _csRefreshBar();
+}
+
+// Ringkasan angka — dihitung dari SELURUH data klien (memakai nilai draft kalau ada), bukan dari
+// baris yang kebetulan sedang tampil di halaman ini.
+function _csRefreshRingkasan(jmlCocok) {
+  const el = document.getElementById("cs_kehadiran_summary");
+  if (!_csRows.length) { el.textContent = ""; return; }
+  const jmlHadir = _csRows.filter(r => _csStatusTampil(r) === "Hadir").length;
+  const jmlTidak = _csRows.filter(r => _csStatusTampil(r) === "Tidak Hadir").length;
+  const jmlBelum = _csRows.length - jmlHadir - jmlTidak;
+  const ekor = (typeof jmlCocok === "number" && jmlCocok !== _csRows.length) ? ` &middot; cocok pencarian: <b>${jmlCocok}</b>` : "";
+  el.innerHTML = `Total <b>${_csRows.length}</b> peserta &middot; Hadir <b class="text-emerald-700">${jmlHadir}</b> &middot; Tidak Hadir <b class="text-red-700">${jmlTidak}</b> &middot; Belum ditandai <b>${jmlBelum}</b>${ekor}`;
+}
+
+// Perbarui bar aksi massal + tombol simpan (tanpa menggambar ulang tabel).
+function _csRefreshBar() {
+  document.getElementById("cs_jml_pilih").textContent = _csPilih.size;
+  const siap = _csRows.filter(r => _csBerubah(r) && _csPilih.has(r.idPeserta)).length;
+  const tertinggal = _csRows.filter(r => _csBerubah(r) && !_csPilih.has(r.idPeserta)).length;
+  const btnSimpan = document.getElementById("btn_cs_simpan");
+  const btnBatal = document.getElementById("btn_cs_batal");
+  btnSimpan.disabled = siap === 0;
+  btnSimpan.textContent = siap ? `Simpan Perubahan (${siap})` : "Simpan Perubahan";
+  btnBatal.disabled = (siap + tertinggal) === 0;
+  document.getElementById("cs_draft_info").innerHTML = tertinggal
+    ? `<span class="text-amber-700"><b>${tertinggal}</b> perubahan TIDAK akan tersimpan karena barisnya tidak dicentang.</span>`
+    : (siap ? `${siap} perubahan siap disimpan.` : "Belum ada perubahan.");
+}
+
 async function muatPesertaKehadiran() {
   const klien = document.getElementById("cs_klien").value;
   const tbody = document.getElementById("tbl_kehadiran");
-  const summary = document.getElementById("cs_kehadiran_summary");
+  const toolbar = document.getElementById("cs_toolbar");
+  const bulkbar = document.getElementById("cs_bulkbar");
+  const savebar = document.getElementById("cs_savebar");
+
+  // Ganti klien = buang draft & centangan klien sebelumnya (kalau ada yang belum disimpan, minta
+  // konfirmasi dulu — jangan sampai pekerjaan orang hilang tanpa peringatan).
+  if (_csDraft.size) {
+    const lanjut = confirm("Masih ada perubahan kehadiran yang belum disimpan. Pindah klien akan membuang perubahan itu. Lanjutkan?");
+    if (!lanjut) return;
+  }
+  _csRows = []; _csDraft.clear(); _csPilih.clear(); _csHal = 1;
+  document.getElementById("cs_cari").value = "";
+  document.getElementById("cs_filter_status").value = "";
+
   if (!klien) {
-    tbody.innerHTML = '<tr><td class="px-3 py-2" colspan="6">Pilih klien dulu.</td></tr>';
-    summary.textContent = "";
+    tbody.innerHTML = '<tr><td class="px-3 py-3 text-slate-500" colspan="6">Pilih klien dulu.</td></tr>';
+    document.getElementById("cs_kehadiran_summary").textContent = "";
+    [toolbar, bulkbar, savebar, document.getElementById("cs_pager")].forEach(el => { el.classList.add("hidden"); el.classList.remove("flex"); });
     return;
   }
-  tbody.innerHTML = '<tr><td class="px-3 py-2" colspan="6">Memuat...</td></tr>';
+
+  tbody.innerHTML = '<tr><td class="px-3 py-3 text-slate-500" colspan="6">Memuat data peserta...</td></tr>';
   let j;
   try {
     j = await apiCall("getDataPeserta", { kodeKlien: klien });
   } catch (err) {
     toast("Gagal memuat daftar peserta: " + (err && err.message ? err.message : String(err)), true);
-    tbody.innerHTML = '<tr><td class="px-3 py-2" colspan="6">Gagal memuat.</td></tr>';
+    tbody.innerHTML = '<tr><td class="px-3 py-3 text-red-600" colspan="6">Gagal memuat.</td></tr>';
     return;
   }
-  if (!j.ok) { toast(j.error, true); tbody.innerHTML = '<tr><td class="px-3 py-2" colspan="6">Gagal memuat.</td></tr>'; return; }
-  tbody.innerHTML = j.data.length ? "" : '<tr><td class="px-3 py-2" colspan="6">Belum ada peserta terdaftar utk klien ini.</td></tr>';
-  const todayIso = new Date().toISOString().slice(0, 10);
-  j.data.forEach(r => {
-    const isHadir = r.statusKehadiran === "Hadir";
-    const isTidak = r.statusKehadiran === "Tidak Hadir";
-    const badgeClass = isHadir ? "bg-emerald-50 text-emerald-700" : (isTidak ? "bg-red-50 text-red-700" : "bg-slate-100 text-slate-500");
-    const badgeText = r.statusKehadiran || "Belum ditandai";
-    tbody.innerHTML += `<tr class="border-b border-slate-100" data-id="${escapeAttr(r.idPeserta)}">
-      <td class="px-3 py-2">${escapeHtml(r.namaPeserta)}</td>
-      <td class="px-3 py-2">${escapeHtml(r.kodePaket)}</td>
-      <td class="px-3 py-2">${escapeHtml(r.tanggalRencana)}</td>
-      <td class="px-3 py-2"><span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${badgeClass}">${escapeHtml(badgeText)}</span></td>
-      <td class="px-3 py-2"><input type="date" class="in-tgl-hadir border border-slate-300 rounded-lg px-2 py-1 text-xs" value="${escapeAttr(r.tanggalHadirAktual || (isHadir ? "" : todayIso))}" ${isHadir ? "" : "disabled"}></td>
-      <td class="px-3 py-2 whitespace-nowrap">
-        <button class="btn-tandai-hadir bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-semibold rounded-lg px-2.5 py-1.5 mr-1">Hadir</button>
-        <button class="btn-tandai-tidak bg-slate-100 hover:bg-slate-200 text-slate-600 text-[11px] font-semibold rounded-lg px-2.5 py-1.5">Tidak Hadir</button>
-      </td></tr>`;
-  });
-  const jumlahHadir = j.data.filter(r => r.statusKehadiran === "Hadir").length;
-  summary.textContent = `${j.data.length} peserta terdaftar, ${jumlahHadir} sudah ditandai Hadir.`;
+  if (!j.ok) { toast(j.error, true); tbody.innerHTML = '<tr><td class="px-3 py-3 text-red-600" colspan="6">Gagal memuat.</td></tr>'; return; }
+
+  _csRows = (j.data || []).filter(r => r.idPeserta); // tanpa ID_Peserta, baris tidak bisa disimpan
+  const tanpaId = (j.data || []).length - _csRows.length;
+  if (tanpaId) toast(`${tanpaId} baris peserta dilewati karena kolom ID_Peserta-nya kosong di Sheets.`, true);
+
+  toolbar.classList.remove("hidden"); toolbar.classList.add("grid");
+  bulkbar.classList.remove("hidden"); bulkbar.classList.add("flex");
+  savebar.classList.remove("hidden"); savebar.classList.add("flex");
+  document.getElementById("cs_bulk_tgl").value = _csHariIni();
+  renderKehadiran();
 }
 
-// Delegasi klik tombol Hadir/Tidak Hadir per baris — pola sama dgn tombol hapus item Paket
-// (delegasi 1x ke document, bukan re-bind listener tiap kali tabel di-render ulang).
-document.addEventListener("click", async (e) => {
-  const tr = e.target.closest("#tbl_kehadiran tr[data-id]");
-  if (!tr) return;
-  let statusBaru = null;
-  if (e.target.classList.contains("btn-tandai-hadir")) statusBaru = "Hadir";
-  else if (e.target.classList.contains("btn-tandai-tidak")) statusBaru = "Tidak Hadir";
-  else return;
-  const idPeserta = tr.getAttribute("data-id");
-  const tglInput = tr.querySelector(".in-tgl-hadir");
-  const tanggalHadirAktual = statusBaru === "Hadir" ? (tglInput.value || new Date().toISOString().slice(0, 10)) : "";
+function gantiHalKehadiran(arah) { _csHal += arah; renderKehadiran(); }
+
+// Aksi massal: terapkan 1 status ke SEMUA baris yang dicentang (termasuk yang ada di halaman lain).
+function terapkanMassalKehadiran() {
+  if (!_csPilih.size) { toast("Centang dulu baris yang mau diubah.", true); return; }
+  const status = document.getElementById("cs_bulk_status").value;
+  const tgl = document.getElementById("cs_bulk_tgl").value || _csHariIni();
+  _csRows.forEach(r => { if (_csPilih.has(r.idPeserta)) _csSetDraft(r.idPeserta, status, tgl); });
+  renderKehadiran();
+  toast(`${_csPilih.size} baris diubah jadi "${status || "Belum ditandai"}". Klik Simpan Perubahan untuk menulis ke Sheets.`);
+}
+
+function batalkanPerubahanKehadiran() {
+  if (!_csDraft.size) return;
+  if (!confirm("Buang semua perubahan yang belum disimpan?")) return;
+  _csDraft.clear();
+  renderKehadiran();
+}
+
+async function simpanPerubahanKehadiran() {
+  // Yang dikirim: baris yang BERUBAH dan DICENTANG — centangan itulah "tombol submit" per baris.
+  const items = _csRows.filter(r => _csBerubah(r) && _csPilih.has(r.idPeserta)).map(r => ({
+    idPeserta: r.idPeserta,
+    statusKehadiran: _csDraft.get(r.idPeserta).status,
+    tanggalHadirAktual: _csDraft.get(r.idPeserta).tgl
+  }));
+  if (!items.length) { toast("Tidak ada perubahan tercentang untuk disimpan.", true); return; }
+
+  const btn = document.getElementById("btn_cs_simpan");
+  const asal = btn.textContent;
+  btn.disabled = true; btn.textContent = "Menyimpan...";
   try {
-    const j = await apiCall("updateKehadiran", { idPeserta, statusKehadiran: statusBaru, tanggalHadirAktual });
-    if (!j.ok) { toast(j.error, true); return; }
-    toast("Status kehadiran diperbarui.");
-    muatPesertaKehadiran();
+    // Dipecah per 250 baris: satu permintaan raksasa berisiko kena batas waktu eksekusi Apps
+    // Script. Tiap potongan tetap cuma 1x baca + 1x tulis di sisi server (lihat updateKehadiranBatch).
+    const UKURAN_POTONG = 250;
+    let totalBerhasil = 0; const semuaGagal = [];
+    for (let i = 0; i < items.length; i += UKURAN_POTONG) {
+      const potong = items.slice(i, i + UKURAN_POTONG);
+      if (items.length > UKURAN_POTONG) btn.textContent = `Menyimpan ${Math.min(i + UKURAN_POTONG, items.length)}/${items.length}...`;
+      const j = await apiCall("updateKehadiranBatch", { items: potong });
+      if (!j.ok) { toast(j.error, true); return; }
+      totalBerhasil += j.berhasil || 0;
+      if (j.gagal && j.gagal.length) semuaGagal.push.apply(semuaGagal, j.gagal);
+    }
+    if (semuaGagal.length) toast(`${totalBerhasil} tersimpan, ${semuaGagal.length} gagal: ${semuaGagal.slice(0, 3).join("; ")}${semuaGagal.length > 3 ? " ..." : ""}`, true);
+    else toast(`${totalBerhasil} status kehadiran tersimpan.`);
+
+    // Muat ulang dari server supaya yang tampil benar-benar cerminan isi Sheets, bukan tebakan
+    // frontend. Draft & centangan dibuang dulu supaya konfirmasi "belum disimpan" tidak muncul.
+    _csDraft.clear(); _csPilih.clear();
+    const klien = document.getElementById("cs_klien").value;
+    const j2 = await apiCall("getDataPeserta", { kodeKlien: klien });
+    if (j2.ok) _csRows = (j2.data || []).filter(r => r.idPeserta);
+    renderKehadiran();
   } catch (err) {
-    toast("Gagal menyimpan status kehadiran: " + (err && err.message ? err.message : String(err)), true);
+    toast("Gagal menyimpan kehadiran: " + (err && err.message ? err.message : String(err)), true);
+  } finally {
+    btn.disabled = false; btn.textContent = asal;
+    _csRefreshBar();
   }
-});
-// Ubah tanggal hadir manual (mis. CS salah klik tanggal default hari ini) tanpa perlu klik tombol Hadir lagi.
-document.addEventListener("change", async (e) => {
-  if (!e.target.classList.contains("in-tgl-hadir") || e.target.disabled) return;
-  const tr = e.target.closest("#tbl_kehadiran tr[data-id]");
-  if (!tr) return;
-  const idPeserta = tr.getAttribute("data-id");
-  try {
-    const j = await apiCall("updateKehadiran", { idPeserta, statusKehadiran: "Hadir", tanggalHadirAktual: e.target.value });
-    if (!j.ok) { toast(j.error, true); return; }
-    toast("Tanggal hadir diperbarui.");
-  } catch (err) {
-    toast("Gagal menyimpan tanggal hadir: " + (err && err.message ? err.message : String(err)), true);
-  }
-});
+}
+
+/* ---- Pemasangan listener (sekali saja, pakai delegasi utk isi tabel yang digambar ulang) ---- */
+(function pasangListenerKehadiran() {
+  let timerCari = null;
+  const inCari = document.getElementById("cs_cari");
+  if (inCari) inCari.addEventListener("input", () => {
+    // Ditunda 200ms: mengetik cepat tidak memicu penggambaran ulang tabel tiap huruf.
+    clearTimeout(timerCari);
+    timerCari = setTimeout(() => { _csHal = 1; renderKehadiran(); }, 200);
+  });
+  const selStatus = document.getElementById("cs_filter_status");
+  if (selStatus) selStatus.addEventListener("change", () => { _csHal = 1; renderKehadiran(); });
+  const selUkuran = document.getElementById("cs_page_size");
+  if (selUkuran) selUkuran.addEventListener("change", () => { _csHal = 1; renderKehadiran(); });
+
+  const chkAll = document.getElementById("cs_check_all");
+  if (chkAll) chkAll.addEventListener("change", () => {
+    const ukuran = _csUkuranHal();
+    const rows = _csTerfilter().slice((_csHal - 1) * ukuran, (_csHal - 1) * ukuran + ukuran);
+    rows.forEach(r => { if (chkAll.checked) _csPilih.add(r.idPeserta); else _csPilih.delete(r.idPeserta); });
+    renderKehadiran();
+  });
+
+  // Delegasi: baris tabel digambar ulang terus, jadi listener dipasang ke tbody sekali saja.
+  const tbody = document.getElementById("tbl_kehadiran");
+  if (!tbody) return;
+
+  tbody.addEventListener("change", (e) => {
+    const tr = e.target.closest("tr[data-id]");
+    if (!tr) return;
+    const id = tr.getAttribute("data-id");
+    const r = _csRows.find(x => x.idPeserta === id);
+    if (!r) return;
+
+    if (e.target.classList.contains("cs-pilih")) {
+      if (e.target.checked) _csPilih.add(id); else _csPilih.delete(id);
+      _csRefreshBar();
+      const chk = document.getElementById("cs_check_all");
+      const ukuran = _csUkuranHal();
+      const hal = _csTerfilter().slice((_csHal - 1) * ukuran, (_csHal - 1) * ukuran + ukuran);
+      const semua = hal.length > 0 && hal.every(x => _csPilih.has(x.idPeserta));
+      chk.checked = semua;
+      chk.indeterminate = !semua && hal.some(x => _csPilih.has(x.idPeserta));
+      return;
+    }
+
+    if (e.target.classList.contains("cs-status") || e.target.classList.contains("cs-tgl")) {
+      const status = tr.querySelector(".cs-status").value;
+      const inTgl = tr.querySelector(".cs-tgl");
+      _csSetDraft(id, status, inTgl.value);
+      const d = _csDraft.get(id);
+      // Perbarui baris ini saja — tabel TIDAK digambar ulang, supaya baris tidak melompat/hilang
+      // di tengah kerja gara-gara filter status yang sedang aktif.
+      inTgl.disabled = d.status !== "Hadir";
+      inTgl.value = d.tgl;
+      tr.querySelector(".cs-pilih").checked = true;
+      const berubah = _csBerubah(r);
+      tr.classList.toggle("bg-amber-50", berubah);
+      const sel = tr.querySelector("td:nth-child(2)");
+      const tandaLama = sel.querySelector("span");
+      if (berubah && !tandaLama) {
+        const s = document.createElement("span");
+        s.className = "text-[10px] font-semibold text-amber-700";
+        s.textContent = " (belum disimpan)";
+        sel.insertBefore(s, sel.querySelector("div"));
+      } else if (!berubah && tandaLama) {
+        tandaLama.remove();
+      }
+      _csRefreshRingkasan(_csTerfilter().length);
+      _csRefreshBar();
+    }
+  });
+})();
 
 let _rkPdfBlobUrl = null;
 async function pratinjauRekapKehadiran() {
