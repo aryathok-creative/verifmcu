@@ -480,7 +480,7 @@ const API_URL = "https://script.google.com/macros/s/AKfycbyNtsz-F-Bjdgvx-1cmOcRe
 // Ditampilkan berdampingan dgn versi backend di header portal — supaya kelihatan langsung kalau
 // salah satunya belum diperbarui (mis. frontend sudah diupload ulang tapi backend belum di-deploy
 // ulang, atau sebaliknya). Lihat komentar VERSI_BACKEND di file .gs untuk latar belakangnya.
-const VERSI_FRONTEND = "2026-08-21 09:00";
+const VERSI_FRONTEND = "2026-08-21 17:00";
 let versiBackendAktif = "?";
 
 let authToken = null;
@@ -1181,6 +1181,7 @@ async function renderPesertaPreview(rows) {
   area.innerHTML = `
     <div class="rounded-xl p-3 text-sm mb-3 mt-4 ${j.jumlahValid===j.jumlahTotal?BANNER_CLASSES.info:BANNER_CLASSES.warn}">
       ${j.jumlahValid} dari ${j.jumlahTotal} baris valid.
+      ${j.jumlahSudahAda ? ` (${j.jumlahSudahAda} di antaranya sepertinya SUDAH ADA di data — dilewati otomatis, lihat keterangan per baris di bawah)` : ""}
     </div>
     <div class="border border-slate-200 rounded-xl overflow-auto max-h-[420px] mb-3">
       <table class="w-full text-xs">
@@ -1228,7 +1229,7 @@ async function commitPesertaImport() {
   }
   toast(j.ulangan
     ? `${j.ditulis} peserta (SUDAH tersimpan dari klik sebelumnya, tidak ditulis dobel).`
-    : `${j.ditulis} peserta disimpan, ${j.dilewati} dilewati.`);
+    : `${j.ditulis} peserta disimpan, ${j.dilewati} dilewati` + (j.dilewatiSudahAda ? `, ${j.dilewatiSudahAda} dilewati krn sudah ada di data` : "") + `.`);
   document.getElementById("ps_preview_area").innerHTML = "";
   document.getElementById("ps_file").value = "";
   _pesertaImportToken = "";
