@@ -173,13 +173,14 @@
           <div class="border border-slate-200 rounded-xl overflow-auto max-h-[360px] mb-3">
             <table class="w-full text-xs">
               <thead><tr class="bg-slate-50">
+                <th class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-200 px-3 py-2 w-10">No</th>
                 <th class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-200 px-3 py-2">Kode</th>
                 <th class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-200 px-3 py-2">Nama Klien</th>
                 <th class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-200 px-3 py-2">Skema</th>
                 <th class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-200 px-3 py-2">PIC</th>
                 <th class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-200 px-3 py-2">Lokasi MCU</th>
               </tr></thead>
-              <tbody id="tbl_klien"><tr><td class="px-3 py-2" colspan="5">Memuat...</td></tr></tbody>
+              <tbody id="tbl_klien"><tr><td class="px-3 py-2" colspan="6">Memuat...</td></tr></tbody>
             </table>
           </div>
           <button class="bg-white border border-slate-300 text-slate-600 hover:border-teal-500 hover:text-teal-700 text-xs font-medium rounded-lg px-3 py-1.5" onclick="muatKlien()">🔄 Muat Ulang</button>
@@ -293,7 +294,10 @@
           </div>
         </div>
         <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 mb-4">
-          <h2 class="text-sm font-semibold text-slate-800 mb-1">Daftar Peserta</h2>
+          <div class="flex items-start justify-between gap-2 mb-1">
+            <h2 class="text-sm font-semibold text-slate-800">Daftar Peserta</h2>
+            <button onclick="downloadPesertaExcel()" class="shrink-0 bg-white border border-slate-300 text-slate-600 hover:border-teal-500 hover:text-teal-700 text-xs font-medium rounded-lg px-3 py-1.5" title="Unduh daftar peserta yang sedang tampil/tersaring (klien+pencarian) sbg Excel, utk cek silang vs file impor">⬇ Download Excel</button>
+          </div>
           <div id="peserta_summary" class="text-xs text-slate-500 mb-3">Memuat ringkasan...</div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3 max-w-2xl">
             <div><label class="text-xs font-medium text-slate-600">Filter klien</label>
@@ -396,6 +400,7 @@
           <div class="overflow-x-auto border border-slate-200 rounded-xl">
             <table class="w-full text-xs">
               <thead><tr class="bg-slate-50">
+                <th class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-200 px-3 py-2 w-10">No</th>
                 <th class="text-left border-b border-slate-200 px-3 py-2 w-8">
                   <input type="checkbox" id="cs_check_all" title="Centang semua baris di halaman ini" class="align-middle cursor-pointer">
                 </th>
@@ -405,7 +410,7 @@
                 <th class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-200 px-3 py-2">Status Kehadiran</th>
                 <th class="text-left text-[11px] uppercase tracking-wide text-slate-500 border-b border-slate-200 px-3 py-2">Tgl Hadir Aktual</th>
               </tr></thead>
-              <tbody id="tbl_kehadiran"><tr><td class="px-3 py-3 text-slate-500" colspan="6">Pilih klien dulu.</td></tr></tbody>
+              <tbody id="tbl_kehadiran"><tr><td class="px-3 py-3 text-slate-500" colspan="7">Pilih klien dulu.</td></tr></tbody>
             </table>
           </div>
 
@@ -475,7 +480,7 @@ const API_URL = "https://script.google.com/macros/s/AKfycbyNtsz-F-Bjdgvx-1cmOcRe
 // Ditampilkan berdampingan dgn versi backend di header portal — supaya kelihatan langsung kalau
 // salah satunya belum diperbarui (mis. frontend sudah diupload ulang tapi backend belum di-deploy
 // ulang, atau sebaliknya). Lihat komentar VERSI_BACKEND di file .gs untuk latar belakangnya.
-const VERSI_FRONTEND = "2026-08-20 15:45";
+const VERSI_FRONTEND = "2026-08-21 09:00";
 let versiBackendAktif = "?";
 
 let authToken = null;
@@ -765,7 +770,9 @@ function renderTabelCari(kunci) {
   } else if (!cocok.length) {
     tbody.innerHTML = `<tr><td class="px-3 py-3 text-slate-500" colspan="${t.colspan}">Tidak ada yang cocok dengan pencarian "${escapeHtml(q)}".</td></tr>`;
   } else {
-    tbody.innerHTML = tampil.map(t.render).join(""); // dirakit sekali, bukan += dalam loop
+    // BARU 2026-08-21: index (i) ikut dikirim ke render() — dipakai Daftar Klien utk kolom "No"
+    // (nomor tampilan, bukan data tersimpan). Callback lain (paket/peserta) boleh abaikan param ini.
+    tbody.innerHTML = tampil.map((r, i) => t.render(r, i)).join(""); // dirakit sekali, bukan += dalam loop
   }
   if (t.onRender) t.onRender(cocok, t.data, tampil.length);
 }
@@ -780,10 +787,13 @@ function _infoJumlahTabel(cocok, semua, digambar, satuan) {
 }
 
 daftarkanTabelCari("klien", {
-  inputId: "kl_cari", tbodyId: "tbl_klien", colspan: 5,
+  inputId: "kl_cari", tbodyId: "tbl_klien", colspan: 6,
   kolomCari: ["kodeKlien", "namaKlien", "skemaTagihan", "picMarketing", "lokasiMcu"],
   pesanKosong: "Belum ada data klien.",
-  render: r => `<tr class="border-b border-slate-100">
+  // BARU 2026-08-21: kolom "No" (feedback Doel) — nomor urut TAMPILAN saja (posisi di daftar yang
+  // sedang tampil/tersaring), Master_Klien sendiri tidak punya kolom nomor tersimpan.
+  render: (r, i) => `<tr class="border-b border-slate-100">
+      <td class="px-3 py-2 text-slate-500">${i + 1}</td>
       <td class="px-3 py-2">${escapeHtml(r.kodeKlien)}</td><td class="px-3 py-2">${escapeHtml(r.namaKlien)}</td>
       <td class="px-3 py-2">${escapeHtml(r.skemaTagihan)}</td><td class="px-3 py-2">${escapeHtml(r.picMarketing)||"-"}</td>
       <td class="px-3 py-2">${escapeHtml(r.lokasiMcu)||"-"}</td></tr>`,
@@ -1015,6 +1025,31 @@ daftarkanTabelCari("peserta", {
       + (_pesertaFilterKlien ? ` &middot; klien <b>${escapeHtml(_pesertaFilterKlien)}</b>` : " &middot; semua klien");
   }
 });
+
+// BARU 2026-08-21 (feedback Doel): download Daftar Peserta ke Excel, utk cek silang manual vs file
+// yang diimpor. Mengunduh SELURUH baris yang cocok dgn filter klien + kotak cari saat ini (BUKAN
+// dibatasi BATAS_BARIS_TABEL 300 yang cuma membatasi apa yang DIGAMBAR di layar) — supaya hasil
+// unduhan benar-benar lengkap utk dibandingkan ke file sumbernya. Pakai XLSX (SheetJS) yang sudah
+// dimuat utk fitur impor, tidak perlu pustaka baru.
+function downloadPesertaExcel() {
+  const t = _tabelCari["peserta"];
+  if (!t || !t.data.length) { toast("Tidak ada data peserta untuk diunduh.", true); return; }
+  const q = (document.getElementById(t.inputId).value || "").trim().toLowerCase();
+  const rows = q
+    ? t.data.filter(r => t.kolomCari.map(k => String(r[k] == null ? "" : r[k])).join(" ").toLowerCase().indexOf(q) > -1)
+    : t.data;
+  if (!rows.length) { toast("Tidak ada baris yang cocok dgn filter/pencarian saat ini untuk diunduh.", true); return; }
+  const dataExport = rows.map(r => ({
+    No: r.no, Klien: r.kodeKlien, Nama_Peserta: r.namaPeserta, Kode_Paket: r.kodePaket,
+    Tanggal_Rencana: r.tanggalRencana, Jenis_Identitas: r.jenisIdentitas || "", No_Identitas: r.noIdentitas || "",
+    ID_Peserta: r.idPeserta || ""
+  }));
+  const ws = XLSX.utils.json_to_sheet(dataExport);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Daftar Peserta");
+  const namaKlienFile = (_pesertaFilterKlien || "SemuaKlien").replace(/[^A-Za-z0-9_-]/g, "_");
+  XLSX.writeFile(wb, `Daftar_Peserta_${namaKlienFile}_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
 async function simpanPesertaManual() {
   const body = {
     kodeKlien: document.getElementById("ps_klien").value,
@@ -1123,6 +1158,11 @@ function parsePesertaFile(file) {
   reader.readAsBinaryString(file);
 }
 let _pesertaPreviewRows = [];
+let _pesertaImportToken = ""; // BARU 2026-08-21 — lihat catatan di commitPesertaImport()
+function _buatTokenImpor_() {
+  if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+  return "tok-" + Date.now() + "-" + Math.random().toString(36).slice(2);
+}
 async function renderPesertaPreview(rows) {
   let j;
   try {
@@ -1136,6 +1176,7 @@ async function renderPesertaPreview(rows) {
     return;
   }
   _pesertaPreviewRows = j.rows;
+  _pesertaImportToken = _buatTokenImpor_(); // token BARU tiap pratinjau baru dimuat
   const area = document.getElementById("ps_preview_area");
   area.innerHTML = `
     <div class="rounded-xl p-3 text-sm mb-3 mt-4 ${j.jumlahValid===j.jumlahTotal?BANNER_CLASSES.info:BANNER_CLASSES.warn}">
@@ -1159,14 +1200,38 @@ async function renderPesertaPreview(rows) {
           ${r.masalah?`<tr><td></td><td class="px-2 pb-1.5 text-red-600 text-[11px]" colspan="4">${escapeHtml(r.masalah)}</td></tr>`:""}`).join("")}</tbody>
       </table>
     </div>
-    <div class="flex justify-end"><button class="bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold rounded-lg px-4 py-2.5" onclick="commitPesertaImport()">Simpan yang Valid (${j.jumlahValid})</button></div>`;
+    <div class="flex justify-end"><button id="btn_ps_commit" class="bg-teal-600 hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg px-4 py-2.5" onclick="commitPesertaImport()">Simpan yang Valid (${j.jumlahValid})</button></div>`;
 }
+// BARU 2026-08-21 (bug ditemukan Doel): kalau file diimpor 2x (double-click, atau koneksi lambat
+// lalu tombol diklik ulang), data bisa masuk DOBEL ke Data_Peserta. Fix 2 lapis:
+// 1) Tombol dinonaktifkan SEGERA saat diklik (di sini) — mencegah klik ganda yang paling umum.
+// 2) `importToken` (dibuat sekali per pratinjau, lihat renderPesertaPreview) dikirim ke backend —
+//    kalau request dgn token yang sama sampai 2x (mis. klik ke-2 lolos sebelum tombol nonaktif,
+//    atau retry jaringan), backend TIDAK menulis ulang, cukup mengembalikan hasil yang sudah ada.
 async function commitPesertaImport() {
   const validRows = _pesertaPreviewRows.filter(r => r.valid);
-  const j = await apiCall("commitImportPeserta", { rows: validRows });
-  toast(`${j.ditulis} peserta disimpan, ${j.dilewati} dilewati.`);
+  const btn = document.getElementById("btn_ps_commit");
+  const labelAsli = btn ? btn.textContent : "";
+  if (btn) { btn.disabled = true; btn.textContent = "Menyimpan..."; }
+  let j;
+  try {
+    j = await apiCall("commitImportPeserta", { rows: validRows, importToken: _pesertaImportToken });
+  } catch (err) {
+    toast("Gagal menghubungi server saat menyimpan impor: " + (err && err.message ? err.message : String(err)), true);
+    if (btn) { btn.disabled = false; btn.textContent = labelAsli; }
+    return;
+  }
+  if (!j || j.ok === false) {
+    toast("Server menolak permintaan simpan impor" + (j && j.error ? (": " + j.error) : " (respons tidak sesuai)") + ".", true);
+    if (btn) { btn.disabled = false; btn.textContent = labelAsli; }
+    return;
+  }
+  toast(j.ulangan
+    ? `${j.ditulis} peserta (SUDAH tersimpan dari klik sebelumnya, tidak ditulis dobel).`
+    : `${j.ditulis} peserta disimpan, ${j.dilewati} dilewati.`);
   document.getElementById("ps_preview_area").innerHTML = "";
   document.getElementById("ps_file").value = "";
+  _pesertaImportToken = "";
   muatPeserta();
 }
 
@@ -1255,12 +1320,16 @@ function renderKehadiran() {
   const halaman = rows.slice(mulai, mulai + ukuran);
 
   if (!_csRows.length) {
-    tbody.innerHTML = '<tr><td class="px-3 py-3 text-slate-500" colspan="6">Belum ada peserta terdaftar untuk klien ini.</td></tr>';
+    tbody.innerHTML = '<tr><td class="px-3 py-3 text-slate-500" colspan="7">Belum ada peserta terdaftar untuk klien ini.</td></tr>';
   } else if (!rows.length) {
-    tbody.innerHTML = '<tr><td class="px-3 py-3 text-slate-500" colspan="6">Tidak ada peserta yang cocok dengan pencarian/filter ini.</td></tr>';
+    tbody.innerHTML = '<tr><td class="px-3 py-3 text-slate-500" colspan="7">Tidak ada peserta yang cocok dengan pencarian/filter ini.</td></tr>';
   } else {
     // Dirakit sekali lewat array + join, bukan innerHTML += di dalam loop (jauh lebih ringan).
-    const potongan = halaman.map(r => {
+    // BARU 2026-08-21: kolom "No" di sebelah kiri checkbox (feedback Doel) — nomor posisi di
+    // daftar YANG SUDAH DISARING (pencarian/filter status), bukan nomor urut mentah dari sheet,
+    // dan memperhitungkan offset halaman (mulai) supaya angkanya tetap masuk akal saat pindah
+    // halaman, bukan mengulang 1..N tiap halaman.
+    const potongan = halaman.map((r, idx) => {
       const id = r.idPeserta;
       const st = _csStatusTampil(r);
       const tgl = _csTglTampil(r);
@@ -1268,6 +1337,7 @@ function renderKehadiran() {
       const dicentang = _csPilih.has(id);
       const warnaBaris = berubah ? "bg-amber-50" : "";
       return `<tr class="border-b border-slate-100 ${warnaBaris}" data-id="${escapeAttr(id)}">
+        <td class="px-3 py-2 align-middle text-slate-500">${mulai + idx + 1}</td>
         <td class="px-3 py-2 align-middle"><input type="checkbox" class="cs-pilih cursor-pointer align-middle"${dicentang ? " checked" : ""}></td>
         <td class="px-3 py-2">${escapeHtml(r.namaPeserta)}${berubah ? ' <span class="text-[10px] font-semibold text-amber-700">(belum disimpan)</span>' : ""}<div class="text-[10px] text-slate-400">${escapeHtml(r.idPeserta)}</div></td>
         <td class="px-3 py-2">${escapeHtml(r.kodePaket)}</td>
@@ -1352,22 +1422,22 @@ async function muatPesertaKehadiran() {
   document.getElementById("cs_filter_status").value = "";
 
   if (!klien) {
-    tbody.innerHTML = '<tr><td class="px-3 py-3 text-slate-500" colspan="6">Pilih klien dulu.</td></tr>';
+    tbody.innerHTML = '<tr><td class="px-3 py-3 text-slate-500" colspan="7">Pilih klien dulu.</td></tr>';
     document.getElementById("cs_kehadiran_summary").textContent = "";
     [toolbar, bulkbar, savebar, document.getElementById("cs_pager")].forEach(el => { el.classList.add("hidden"); el.classList.remove("flex"); });
     return;
   }
 
-  tbody.innerHTML = '<tr><td class="px-3 py-3 text-slate-500" colspan="6">Memuat data peserta...</td></tr>';
+  tbody.innerHTML = '<tr><td class="px-3 py-3 text-slate-500" colspan="7">Memuat data peserta...</td></tr>';
   let j;
   try {
     j = await apiCall("getDataPeserta", { kodeKlien: klien });
   } catch (err) {
     toast("Gagal memuat daftar peserta: " + (err && err.message ? err.message : String(err)), true);
-    tbody.innerHTML = '<tr><td class="px-3 py-3 text-red-600" colspan="6">Gagal memuat.</td></tr>';
+    tbody.innerHTML = '<tr><td class="px-3 py-3 text-red-600" colspan="7">Gagal memuat.</td></tr>';
     return;
   }
-  if (!j.ok) { toast(j.error, true); tbody.innerHTML = '<tr><td class="px-3 py-3 text-red-600" colspan="6">Gagal memuat.</td></tr>'; return; }
+  if (!j.ok) { toast(j.error, true); tbody.innerHTML = '<tr><td class="px-3 py-3 text-red-600" colspan="7">Gagal memuat.</td></tr>'; return; }
 
   _csRows = (j.data || []).filter(r => r.idPeserta); // tanpa ID_Peserta, baris tidak bisa disimpan
   const tanpaId = (j.data || []).length - _csRows.length;
